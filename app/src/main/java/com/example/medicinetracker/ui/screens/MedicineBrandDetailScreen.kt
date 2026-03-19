@@ -31,12 +31,13 @@ fun MedicineBrandDetailScreen(
     viewModel: MedicineViewModel,
     onBack: () -> Unit
 ) {
+    var currentBrand by remember { mutableStateOf(brand) }
     val genericInfo by viewModel.selectedGenericInfo.collectAsState()
     val isLoading by viewModel.isLoadingGenericInfo.collectAsState()
     val combinedAlternates by viewModel.combinedAlternateBrands.collectAsState()
 
-    LaunchedEffect(brand.id) {
-        viewModel.getGenericInfo(brand)
+    LaunchedEffect(currentBrand.id) {
+        viewModel.getGenericInfo(currentBrand)
     }
 
     Scaffold(
@@ -52,19 +53,18 @@ fun MedicineBrandDetailScreen(
         }
     ) { innerPadding ->
         MedicineBrandDetailView(
-            brand = brand,
+            brand = currentBrand,
             genericInfo = genericInfo,
             alternateBrands = combinedAlternates,
             isLoading = isLoading,
             viewModel = viewModel,
             onBrandClick = { newBrand ->
-                viewModel.getGenericInfo(newBrand)
+                currentBrand = newBrand
             },
             modifier = Modifier.padding(innerPadding)
         )
     }
-    }
-
+}
     @Composable
     fun AlternateBrandCard(
     brand: MedicineBrand,
