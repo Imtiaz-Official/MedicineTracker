@@ -27,8 +27,10 @@ fun MedicineBrandDetailScreen(
 ) {
     val genericInfo by viewModel.selectedGenericInfo.collectAsState()
     val isLoading by viewModel.isLoadingGenericInfo.collectAsState()
+    var hasStartedLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(brand) {
+        hasStartedLoading = true
         viewModel.getGenericInfo(brand)
     }
 
@@ -47,7 +49,7 @@ fun MedicineBrandDetailScreen(
         MedicineBrandDetailView(
             brand = brand,
             genericInfo = genericInfo,
-            isLoading = isLoading,
+            isLoading = isLoading || !hasStartedLoading,
             modifier = Modifier.padding(innerPadding)
         )
     }
@@ -67,7 +69,7 @@ fun MedicineBrandDetailView(
             .padding(bottom = 32.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             Text(
                 text = brand.name,
@@ -84,19 +86,19 @@ fun MedicineBrandDetailView(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            DetailItem(label = "Generic Name", value = brand.generic, valueStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            DetailItem(label = "Dosage Form", value = brand.dosageForm)
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            DetailItem(label = "Manufacturer", value = brand.manufacturer)
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    DetailItem(label = "Generic Name", value = brand.generic, valueStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DetailItem(label = "Dosage Form", value = brand.dosageForm)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    DetailItem(label = "Manufacturer", value = brand.manufacturer)
+                }
+            }
             
             if (!brand.packageContainer.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -109,12 +111,20 @@ fun MedicineBrandDetailView(
             }
             
             Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Clinical Monograph",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.outline
+            )
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
 
         if (isLoading) {
             item {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
                 }
             }
         } else if (genericInfo != null) {
@@ -133,12 +143,12 @@ fun MedicineBrandDetailView(
         } else {
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Text(
-                        "No additional monograph information available for this generic name.",
-                        modifier = Modifier.padding(16.dp),
+                        "No clinical monograph available for this generic.",
+                        modifier = Modifier.padding(24.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -151,7 +161,7 @@ fun MedicineBrandDetailView(
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -165,9 +175,9 @@ fun MedicineBrandDetailView(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Informational only. Always consult a healthcare professional.",
+                        "Disclaimer: This information is for educational purposes and is not a substitute for professional medical advice.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
             }
