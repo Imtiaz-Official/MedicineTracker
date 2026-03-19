@@ -341,29 +341,55 @@ fun MonographSection(title: String, content: String?) {
     if (content.isNullOrBlank()) return
     
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val primaryColor = MaterialTheme.colorScheme.primary
     
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = primaryColor
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { context ->
                 android.widget.TextView(context).apply {
                     setTextColor(textColor)
-                    textSize = 14f
+                    textSize = 15f
+                    // Add line spacing for better readability
+                    setLineSpacing(0f, 1.2f)
+                    // Ensure links are clickable
+                    movementMethod = android.text.method.LinkMovementMethod.getInstance()
                 }
             },
             update = { textView ->
                 textView.setTextColor(textColor)
-                textView.text = android.text.Html.fromHtml(content, android.text.Html.FROM_HTML_MODE_COMPACT)
-            }
+                val formattedHtml = formatHtmlContent(content)
+                textView.text = android.text.Html.fromHtml(formattedHtml, android.text.Html.FROM_HTML_MODE_COMPACT)
+            },
+            modifier = Modifier.fillMaxWidth()
         )
     }
+}
+
+/**
+ * Pre-processes HTML from Medex to ensure proper spacing and bullet points.
+ */
+private fun formatHtmlContent(html: String): String {
+    return html
+        // 1. Add extra line breaks before list items to prevent "clumping"
+        .replace("<li>", "•  ")
+        .replace("</li>", "<br/>")
+        // 2. Add gaps between paragraphs/sections
+        .replace("</div>", "</div><br/>")
+        .replace("<br>", "<br/>")
+        .replace("<br/>", "<br/><br/>") // Double break for actual gaps
+        // 3. Clean up excessive double breaks we might have created
+        .replace("<br/><br/><br/><br/>", "<br/><br/>")
+        // 4. Ensure bold tags look good
+        .replace("<strong>", "<b>")
+        .replace("</strong>", "</b>")
 }
 
 @Composable
