@@ -229,7 +229,8 @@ fun DashboardScreen(
                         medicineWithOptions = it
                         showOptionsSheet = true
                     },
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    doseHistory = history
                 )
                 1 -> HistoryList(history, onRemoveRecord = { recordToDelete = it })
                 2 -> CalendarView(history)
@@ -433,7 +434,8 @@ fun MedicineList(
     onMedicineClick: (Medicine) -> Unit,
     onMedicineDelete: (Medicine) -> Unit,
     onMedicineLongClick: (Medicine) -> Unit,
-    viewModel: MedicineViewModel
+    viewModel: MedicineViewModel,
+    doseHistory: List<com.example.medicinetracker.data.model.DoseRecord>
 ) {
     if (medicines.isEmpty()) {
         Box(
@@ -455,7 +457,7 @@ fun MedicineList(
             }
         }
     } else {
-        val nextDose = remember(medicines) { findNextDose(medicines) }
+        val nextDose = remember(medicines, doseHistory) { findNextDose(medicines, doseHistory) }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -494,7 +496,10 @@ data class NextDoseInfo(
     val label: String
 )
 
-private fun findNextDose(medicines: List<Medicine>): NextDoseInfo? {
+private fun findNextDose(
+    medicines: List<Medicine>, 
+    doseHistory: List<com.example.medicinetracker.data.model.DoseRecord>
+): NextDoseInfo? {
     val now = LocalDateTime.now()
     val upcomingDoses = mutableListOf<LocalDateTimeInfo>()
 
@@ -510,7 +515,6 @@ private fun findNextDose(medicines: List<Medicine>): NextDoseInfo? {
             val isValidDay = when (medicine.frequency) {
                 com.example.medicinetracker.data.model.FrequencyType.DAILY -> true
                 com.example.medicinetracker.data.model.FrequencyType.WEEKLY -> {
-                    // Weekly usually means same day of week as start date
                     checkDate.dayOfWeek == medicine.startDate.dayOfWeek
                 }
                 com.example.medicinetracker.data.model.FrequencyType.SPECIFIC_DAYS -> {
@@ -522,7 +526,16 @@ private fun findNextDose(medicines: List<Medicine>): NextDoseInfo? {
             if (isValidDay) {
                 for (time in medicine.timesPerDay) {
                     val doseDateTime = LocalDateTime.of(checkDate, time)
-                    if (doseDateTime.isAfter(now)) {
+                    
+                    // CRITICAL: Filter out doses that are already taken today
+                    val isTaken = doseHistory.any { 
+                        it.medicineId == medicine.id && 
+                        LocalDateTime.parse(it.dateTimeString).toLocalDate() == checkDate &&
+                        // Simple check: if a dose was logged within 2 hours of this slot, count it as taken
+                        java.time.Duration.between(LocalDateTime.parse(it.dateTimeString).toLocalTime(), time).abs().toMinutes() < 120
+                    }
+
+                    if (doseDateTime.isAfter(now) && !isTaken) {
                         upcomingDoses.add(LocalDateTimeInfo(medicine, doseDateTime))
                     }
                 }
