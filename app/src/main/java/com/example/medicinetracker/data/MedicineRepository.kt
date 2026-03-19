@@ -44,4 +44,16 @@ class MedicineRepository(
     suspend fun insertBrands(brands: List<MedicineBrand>) {
         medicineDao.insertBrands(brands)
     }
+
+    suspend fun insertGenerics(generics: List<com.example.medicinetracker.data.model.GenericInfo>) {
+        medicineDao.insertGenerics(generics)
+    }
+
+    suspend fun getGenericInfoById(id: Long): com.example.medicinetracker.data.model.GenericInfo? {
+        return medicineDao.getGenericInfoById(id)
+    }
+
+    suspend fun getGenericInfoByName(name: String): com.example.medicinetracker.data.model.GenericInfo? {
+        return medicineDao.getGenericInfoByName(name)
+    }
 }

@@ -33,6 +33,15 @@ class MedicineViewModel(
     private val _suggestions = MutableStateFlow<List<MedicineSuggestion>>(emptyList())
     val suggestions = _suggestions.asStateFlow()
 
+    private val _searchResults = MutableStateFlow<List<MedicineBrand>>(emptyList())
+    val searchResults = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching = _isSearching.asStateFlow()
+
+    private val _selectedGenericInfo = MutableStateFlow<com.example.medicinetracker.data.model.GenericInfo?>(null)
+    val selectedGenericInfo = _selectedGenericInfo.asStateFlow()
+
     private val _dosageForms = MutableStateFlow<List<DosageForm>>(emptyList())
     val dosageForms = _dosageForms.asStateFlow()
 
@@ -61,13 +70,37 @@ private fun populateBrands() {
     viewModelScope.launch {
         try {
             val count = withContext(Dispatchers.IO) { repository.getBrandCount() }
-            // We converted ~21k, so if we have less than 20k, let's re-populate or initial populate
             if (count > 20000) return@launch
 
-            val jsonString = getApplication<Application>().assets.open("medicine_brands.json").bufferedReader().use { it.readText() }
-            val jsonArray = JSONArray(jsonString)
+            // 1. Populate Generics first
+            val genericsJson = getApplication<Application>().assets.open("medicine_generics.json").bufferedReader().use { it.readText() }
+            val genericsArray = JSONArray(genericsJson)
+            val genericsList = mutableListOf<com.example.medicinetracker.data.model.GenericInfo>()
+            for (i in 0 until genericsArray.length()) {
+                val obj = genericsArray.getJSONObject(i)
+                genericsList.add(com.example.medicinetracker.data.model.GenericInfo(
+                    id = obj.getLong("id"),
+                    name = obj.getString("name"),
+                    indication = obj.optString("indication").takeIf { it != "null" },
+                    therapeuticClass = obj.optString("therapeuticClass").takeIf { it != "null" },
+                    pharmacology = obj.optString("pharmacology").takeIf { it != "null" },
+                    dosage = obj.optString("dosage").takeIf { it != "null" },
+                    administration = obj.optString("administration").takeIf { it != "null" },
+                    interaction = obj.optString("interaction").takeIf { it != "null" },
+                    contraindications = obj.optString("contraindications").takeIf { it != "null" },
+                    sideEffects = obj.optString("sideEffects").takeIf { it != "null" },
+                    pregnancyLactation = obj.optString("pregnancyLactation").takeIf { it != "null" },
+                    precautions = obj.optString("precautions").takeIf { it != "null" },
+                    storage = obj.optString("storage").takeIf { it != "null" }
+                ))
+            }
+            withContext(Dispatchers.IO) { repository.insertGenerics(genericsList) }
 
-            val total = jsonArray.length()
+            // 2. Populate Brands
+            val brandsJson = getApplication<Application>().assets.open("medicine_brands.json").bufferedReader().use { it.readText() }
+            val brandsArray = JSONArray(brandsJson)
+
+            val total = brandsArray.length()
             val chunkSize = 1000
 
             withContext(Dispatchers.IO) {
@@ -75,14 +108,15 @@ private fun populateBrands() {
                     val list = mutableListOf<MedicineBrand>()
                     val end = if (i + chunkSize > total) total else i + chunkSize
                     for (j in i until end) {
-                        val obj = jsonArray.getJSONObject(j)
+                        val obj = brandsArray.getJSONObject(j)
                         list.add(MedicineBrand(
                             id = obj.getLong("id"),
                             name = obj.getString("name"),
                             dosageForm = obj.getString("dosageForm"),
                             generic = obj.getString("generic"),
                             strength = obj.getString("strength"),
-                            manufacturer = obj.getString("manufacturer")
+                            manufacturer = obj.getString("manufacturer"),
+                            genericId = if (obj.has("genericId")) obj.getLong("genericId") else null
                         ))
                     }
                     repository.insertBrands(list)
@@ -95,6 +129,21 @@ private fun populateBrands() {
 }
 
     private var searchJob: kotlinx.coroutines.Job? = null
+    private var dedicatedSearchJob: kotlinx.coroutines.Job? = null
+
+    fun getGenericInfo(brand: MedicineBrand) {
+        viewModelScope.launch {
+            _selectedGenericInfo.value = null
+            val info = withContext(Dispatchers.IO) {
+                if (brand.genericId != null) {
+                    repository.getGenericInfoById(brand.genericId)
+                } else {
+                    repository.getGenericInfoByName(brand.generic)
+                }
+            }
+            _selectedGenericInfo.value = info
+        }
+    }
 
     fun searchMedicine(query: String) {
         searchJob?.cancel()
@@ -117,6 +166,25 @@ private fun populateBrands() {
                 }
             }
             _suggestions.value = localResults
+        }
+    }
+
+    fun performDedicatedSearch(query: String) {
+        dedicatedSearchJob?.cancel()
+        if (query.length < 2) {
+            _searchResults.value = emptyList()
+            _isSearching.value = false
+            return
+        }
+
+        dedicatedSearchJob = viewModelScope.launch {
+            _isSearching.value = true
+            kotlinx.coroutines.delay(300)
+            val results = withContext(Dispatchers.IO) {
+                repository.searchBrands(query)
+            }
+            _searchResults.value = results
+            _isSearching.value = false
         }
     }
 

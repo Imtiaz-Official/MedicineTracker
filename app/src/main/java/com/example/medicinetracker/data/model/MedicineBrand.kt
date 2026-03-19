@@ -10,5 +10,6 @@ data class MedicineBrand(
     val dosageForm: String,
     val generic: String,
     val strength: String,
-    val manufacturer: String
+    val manufacturer: String,
+    val genericId: Long? = null
 )

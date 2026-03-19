@@ -10,13 +10,15 @@ interface MedicineDao {
     @Query("""
         SELECT * FROM medicine_brands 
         WHERE name LIKE '%' || :query || '%' 
+           OR generic LIKE '%' || :query || '%'
         ORDER BY 
             CASE 
                 WHEN name LIKE :query || '%' THEN 1 
-                ELSE 2 
+                WHEN generic LIKE :query || '%' THEN 2
+                ELSE 3 
             END, 
             name ASC 
-        LIMIT 20
+        LIMIT 50
     """)
     suspend fun searchBrands(query: String): List<MedicineBrand>
 
@@ -25,4 +27,13 @@ interface MedicineDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBrands(brands: List<MedicineBrand>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGenerics(generics: List<com.example.medicinetracker.data.model.GenericInfo>)
+
+    @Query("SELECT * FROM generic_info WHERE id = :id")
+    suspend fun getGenericInfoById(id: Long): com.example.medicinetracker.data.model.GenericInfo?
+
+    @Query("SELECT * FROM generic_info WHERE name = :name LIMIT 1")
+    suspend fun getGenericInfoByName(name: String): com.example.medicinetracker.data.model.GenericInfo?
 }

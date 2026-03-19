@@ -7,8 +7,9 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.medicinetracker.data.model.Medicine
 import com.example.medicinetracker.data.model.MedicineBrand
+import com.example.medicinetracker.data.model.GenericInfo
 
-@Database(entities = [MedicineBrand::class], version = 7, exportSchema = false)
+@Database(entities = [MedicineBrand::class, GenericInfo::class], version = 8, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class MedicineDatabase : RoomDatabase() {
     abstract fun medicineDao(): MedicineDao
