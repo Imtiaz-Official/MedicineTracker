@@ -11,5 +11,7 @@ data class MedicineBrand(
     val generic: String,
     val strength: String,
     val manufacturer: String,
-    val genericId: Long? = null
+    val genericId: Long? = null,
+    val packageContainer: String? = null,
+    val packageSize: String? = null
 )

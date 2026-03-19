@@ -14,7 +14,7 @@ def restore_brands():
             for g in gens:
                 generics_map[g['name'].lower()] = g['id']
 
-    print("Restoring brands from medicine.csv...")
+    print("Restoring brands from medicine.csv with extra details...")
     with open('medicine.csv', mode='r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -30,7 +30,9 @@ def restore_brands():
                     "generic": gen_name,
                     "strength": row['strength'],
                     "manufacturer": row['manufacturer'],
-                    "genericId": gen_id
+                    "genericId": gen_id,
+                    "packageContainer": row.get('package container'),
+                    "packageSize": row.get('Package Size')
                 }
                 brands.append(brand)
             except (KeyError, ValueError):
@@ -40,7 +42,7 @@ def restore_brands():
     with open(os.path.join(assets_dir, 'medicine_brands.json'), 'w', encoding='utf-8') as f:
         json.dump(brands, f, ensure_ascii=False, indent=2)
     
-    print(f"Successfully restored {len(brands)} brands.")
+    print(f"Successfully restored {len(brands)} brands with extra details.")
 
 if __name__ == "__main__":
     restore_brands()

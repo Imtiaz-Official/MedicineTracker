@@ -37,27 +37,18 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 @Composable
 fun DashboardScreen(
     viewModel: MedicineViewModel,
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
     onAddMedicineClick: () -> Unit,
-    onMedicineClick: (Medicine) -> Unit
+    onMedicineClick: (Medicine) -> Unit,
+    onBrandClick: (com.example.medicinetracker.data.model.MedicineBrand) -> Unit
 ) {
     val medicines by viewModel.allMedicines.collectAsState()
     val history by viewModel.doseHistory.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
     var recordToDelete by remember { mutableStateOf<com.example.medicinetracker.data.model.DoseRecord?>(null) }
     var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
     var medicineWithOptions by remember { mutableStateOf<Medicine?>(null) }
     var showOptionsSheet by remember { mutableStateOf(false) }
-    var brandToShowDetails by remember { mutableStateOf<com.example.medicinetracker.data.model.MedicineBrand?>(null) }
-
-    if (brandToShowDetails != null) {
-        val genericInfo by viewModel.selectedGenericInfo.collectAsState()
-        ModalBottomSheet(
-            onDismissRequest = { brandToShowDetails = null },
-            sheetState = rememberModalBottomSheetState()
-        ) {
-            MedicineBrandDetailView(brand = brandToShowDetails!!, genericInfo = genericInfo)
-        }
-    }
 
     if (showOptionsSheet && medicineWithOptions != null) {
         ModalBottomSheet(
@@ -194,25 +185,25 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Default.MedicalServices, contentDescription = null) },
                     label = { Text("Medicines") },
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 }
+                    onClick = { onTabSelected(0) }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.History, contentDescription = null) },
                     label = { Text("History") },
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
+                    onClick = { onTabSelected(1) }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
                     label = { Text("Calendar") },
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 }
+                    onClick = { onTabSelected(2) }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Search, contentDescription = null) },
                     label = { Text("Search") },
                     selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 }
+                    onClick = { onTabSelected(3) }
                 )
             }
         },
@@ -241,7 +232,7 @@ fun DashboardScreen(
                 )
                 1 -> HistoryList(history, onRemoveRecord = { recordToDelete = it })
                 2 -> CalendarView(history)
-                3 -> SearchMedicineScreen(viewModel, onBrandClick = { brandToShowDetails = it })
+                3 -> SearchMedicineScreen(viewModel, onBrandClick = onBrandClick)
             }
         }
     }
@@ -322,145 +313,6 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
                 }
             }
         }
-    }
-}
-
-@Composable
-fun MedicineBrandDetailView(
-    brand: com.example.medicinetracker.data.model.MedicineBrand,
-    genericInfo: com.example.medicinetracker.data.model.GenericInfo?
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(bottom = 32.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = brand.name,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Text(
-                text = brand.strength,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.secondary
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            DetailItem(label = "Generic Name", value = brand.generic, valueStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            DetailItem(label = "Dosage Form", value = brand.dosageForm)
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            DetailItem(label = "Manufacturer", value = brand.manufacturer)
-            
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        if (genericInfo != null) {
-            item {
-                MonographSection(title = "Indications", content = genericInfo.indication)
-                MonographSection(title = "Therapeutic Class", content = genericInfo.therapeuticClass)
-                MonographSection(title = "Pharmacology", content = genericInfo.pharmacology)
-                MonographSection(title = "Dosage & Administration", content = genericInfo.dosage ?: genericInfo.administration)
-                MonographSection(title = "Interaction", content = genericInfo.interaction)
-                MonographSection(title = "Contraindications", content = genericInfo.contraindications)
-                MonographSection(title = "Side Effects", content = genericInfo.sideEffects)
-                MonographSection(title = "Pregnancy & Lactation", content = genericInfo.pregnancyLactation)
-                MonographSection(title = "Precautions", content = genericInfo.precautions)
-                MonographSection(title = "Storage Conditions", content = genericInfo.storage)
-            }
-        } else {
-            item {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Info, 
-                        contentDescription = null, 
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "Informational only. Always consult a healthcare professional.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-@Composable
-fun MonographSection(title: String, content: String?) {
-    if (content.isNullOrBlank()) return
-    
-    Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        androidx.compose.ui.viewinterop.AndroidView(
-            factory = { context ->
-                android.widget.TextView(context).apply {
-                    setTextColor(android.graphics.Color.BLACK)
-                    textSize = 14f
-                }
-            },
-            update = { textView ->
-                textView.text = android.text.Html.fromHtml(content, android.text.Html.FROM_HTML_MODE_COMPACT)
-            }
-        )
-    }
-}
-
-@Composable
-fun DetailItem(label: String, value: String, valueStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = valueStyle,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 

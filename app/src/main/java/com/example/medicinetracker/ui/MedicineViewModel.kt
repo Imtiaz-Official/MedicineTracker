@@ -45,6 +45,9 @@ class MedicineViewModel(
     private val _selectedGenericInfo = MutableStateFlow<com.example.medicinetracker.data.model.GenericInfo?>(null)
     val selectedGenericInfo = _selectedGenericInfo.asStateFlow()
 
+    private val _isLoadingGenericInfo = MutableStateFlow(false)
+    val isLoadingGenericInfo = _isLoadingGenericInfo.asStateFlow()
+
     private val _dosageForms = MutableStateFlow<List<DosageForm>>(emptyList())
     val dosageForms = _dosageForms.asStateFlow()
 
@@ -132,7 +135,9 @@ private fun populateBrands() {
                             generic = obj.getString("generic"),
                             strength = obj.getString("strength"),
                             manufacturer = obj.getString("manufacturer"),
-                            genericId = genericId
+                            genericId = if (!obj.isNull("genericId")) obj.getLong("genericId") else null,
+                            packageContainer = obj.optString("packageContainer").takeIf { it != "null" },
+                            packageSize = obj.optString("packageSize").takeIf { it != "null" }
                         ))
                     }
                     repository.insertBrands(list)
@@ -154,7 +159,9 @@ private fun populateBrands() {
 
     fun getGenericInfo(brand: MedicineBrand) {
         viewModelScope.launch {
+            _isLoadingGenericInfo.value = true
             _selectedGenericInfo.value = null
+            android.util.Log.d("MedicineViewModel", "Fetching generic info for brand: ${brand.name}, generic: ${brand.generic}, genericId: ${brand.genericId}")
             val info = withContext(Dispatchers.IO) {
                 if (brand.genericId != null) {
                     repository.getGenericInfoById(brand.genericId)
@@ -162,8 +169,15 @@ private fun populateBrands() {
                     repository.getGenericInfoByName(brand.generic)
                 }
             }
+            android.util.Log.d("MedicineViewModel", "Fetch complete. Info found: ${info != null}")
             _selectedGenericInfo.value = info
+            _isLoadingGenericInfo.value = false
         }
+    }
+
+    fun clearSelectedGenericInfo() {
+        _selectedGenericInfo.value = null
+        _isLoadingGenericInfo.value = false
     }
 
     fun searchMedicine(query: String) {

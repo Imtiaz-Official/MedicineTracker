@@ -9,7 +9,7 @@ import com.example.medicinetracker.data.model.Medicine
 import com.example.medicinetracker.data.model.MedicineBrand
 import com.example.medicinetracker.data.model.GenericInfo
 
-@Database(entities = [MedicineBrand::class, GenericInfo::class], version = 9, exportSchema = false)
+@Database(entities = [MedicineBrand::class, GenericInfo::class], version = 10, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class MedicineDatabase : RoomDatabase() {
     abstract fun medicineDao(): MedicineDao
