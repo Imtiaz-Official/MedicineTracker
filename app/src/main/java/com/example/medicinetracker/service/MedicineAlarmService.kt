@@ -81,6 +81,18 @@ class MedicineAlarmService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val skipIntent = Intent(this, MedicineAlarmReceiver::class.java).apply {
+            action = "ACTION_SKIP"
+            putExtra("MEDICINE_ID", medicineId)
+            putExtra("MEDICINE_NAME", name)
+        }
+        val skipPendingIntent = PendingIntent.getBroadcast(
+            this,
+            3,
+            skipIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -108,7 +120,8 @@ class MedicineAlarmService : Service() {
             .setFullScreenIntent(openAppPendingIntent, true)
             .setContentIntent(openAppPendingIntent)
             .addAction(android.R.drawable.ic_menu_edit, "Take", takePendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Dismiss", stopPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Skip", skipPendingIntent)
+            .addAction(android.R.drawable.ic_menu_view, "Dismiss", stopPendingIntent)
             .build()
 
         startForeground(1001, notification)

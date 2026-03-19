@@ -1,8 +1,14 @@
 package com.example.medicinetracker.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -19,13 +25,13 @@ import java.time.LocalDateTime
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import java.time.YearMonth
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -38,6 +44,99 @@ fun DashboardScreen(
     val history by viewModel.doseHistory.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
     var recordToDelete by remember { mutableStateOf<com.example.medicinetracker.data.model.DoseRecord?>(null) }
+    var medicineToDelete by remember { mutableStateOf<Medicine?>(null) }
+    var medicineWithOptions by remember { mutableStateOf<Medicine?>(null) }
+    var showOptionsSheet by remember { mutableStateOf(false) }
+
+    if (showOptionsSheet && medicineWithOptions != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showOptionsSheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = medicineWithOptions?.name ?: "",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                ListItem(
+                    headlineContent = { Text("Take Now") },
+                    leadingContent = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50)) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        medicineWithOptions?.let { viewModel.logDose(it, "TAKEN") }
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Skip Dose") },
+                    leadingContent = { Icon(Icons.Default.Cancel, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        medicineWithOptions?.let { viewModel.logDose(it, "SKIPPED") }
+                    }
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                ListItem(
+                    headlineContent = { Text("Edit Details") },
+                    leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        medicineWithOptions?.let { onMedicineClick(it) }
+                    }
+                )
+                
+                ListItem(
+                    headlineContent = { Text("Delete Medicine", color = MaterialTheme.colorScheme.error) },
+                    leadingContent = { 
+                        Icon(
+                            Icons.Default.Delete, 
+                            contentDescription = null, 
+                            tint = MaterialTheme.colorScheme.error 
+                        ) 
+                    },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        medicineToDelete = medicineWithOptions
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
+    if (medicineToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { medicineToDelete = null },
+            title = { Text("Delete Medicine") },
+            text = { Text("Are you sure you want to delete ${medicineToDelete?.name}? This will also cancel all scheduled alarms for this medicine.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        medicineToDelete?.let { viewModel.delete(it) }
+                        medicineToDelete = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { medicineToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     if (recordToDelete != null) {
         AlertDialog(
@@ -114,7 +213,15 @@ fun DashboardScreen(
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                0 -> MedicineList(medicines, onMedicineClick)
+                0 -> MedicineList(
+                    medicines = medicines, 
+                    onMedicineClick = onMedicineClick, 
+                    onMedicineDelete = { medicineToDelete = it },
+                    onMedicineLongClick = {
+                        medicineWithOptions = it
+                        showOptionsSheet = true
+                    }
+                )
                 1 -> HistoryList(history, onRemoveRecord = { recordToDelete = it })
                 2 -> CalendarView(history)
             }
@@ -123,7 +230,12 @@ fun DashboardScreen(
 }
 
 @Composable
-fun MedicineList(medicines: List<Medicine>, onMedicineClick: (Medicine) -> Unit) {
+fun MedicineList(
+    medicines: List<Medicine>, 
+    onMedicineClick: (Medicine) -> Unit,
+    onMedicineDelete: (Medicine) -> Unit,
+    onMedicineLongClick: (Medicine) -> Unit
+) {
     if (medicines.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -158,7 +270,12 @@ fun MedicineList(medicines: List<Medicine>, onMedicineClick: (Medicine) -> Unit)
                 )
             }
             items(medicines) { medicine ->
-                MedicineCard(medicine, onClick = { onMedicineClick(medicine) })
+                MedicineCard(
+                    medicine = medicine, 
+                    onClick = { onMedicineClick(medicine) },
+                    onLongClick = { onMedicineLongClick(medicine) },
+                    onDeleteClick = { onMedicineDelete(medicine) }
+                )
             }
         }
     }
@@ -262,7 +379,7 @@ fun HistoryList(
                                 imageVector = if (record.status == "TAKEN") Icons.Default.CheckCircle else Icons.Default.Cancel,
                                 contentDescription = null,
                                 tint = if (record.status == "TAKEN") 
-                                    MaterialTheme.colorScheme.primary 
+                                    MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -273,8 +390,8 @@ fun HistoryList(
                                 Text(
                                     text = record.medicineName, 
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = dateTime.format(timeFormatter),
@@ -310,80 +427,92 @@ fun CalendarView(history: List<com.example.medicinetracker.data.model.DoseRecord
         history.groupBy { LocalDateTime.parse(it.dateTimeString).toLocalDate() }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Month Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 500.dp) // Professional limit for tablet/desktop
+                .fillMaxWidth()
         ) {
-            IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
-            }
-            Text(
-                text = "${currentMonth.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack, 
-                    modifier = Modifier.rotate(180f), 
-                    contentDescription = "Next Month"
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Weekdays Header
-        Row(modifier = Modifier.fillMaxWidth()) {
-            val weekdays = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            weekdays.forEach { day ->
+            // Month Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+                }
                 Text(
-                    text = day,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "${currentMonth.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
+                IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack, 
+                        modifier = Modifier.rotate(180f), 
+                        contentDescription = "Next Month"
+                    )
+                }
             }
-        }
 
-        Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
 
-        // Calendar Grid
-        val totalCells = ((daysInMonth + firstDayOfWeek + 6) / 7) * 7
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (row in 0 until totalCells / 7) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    for (col in 0 until 7) {
-                        val dayNum = row * 7 + col - firstDayOfWeek + 1
-                        Box(modifier = Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
-                            if (dayNum in 1..daysInMonth) {
-                                val date = currentMonth.atDay(dayNum)
-                                val records = historyByDate[date] ?: emptyList()
-                                
-                                val statusColor = when {
-                                    records.isEmpty() -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                    records.all { it.status == "TAKEN" } -> Color(0xFF4CAF50) // Green
-                                    records.all { it.status == "SKIPPED" } -> MaterialTheme.colorScheme.error
-                                    else -> Color(0xFFFFC107) // Yellow/Amber for partial
-                                }
+            // Weekdays Header
+            Row(modifier = Modifier.fillMaxWidth()) {
+                val weekdays = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+                weekdays.forEach { day ->
+                    Text(
+                        text = day,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(0.8f),
-                                    shape = androidx.compose.foundation.shape.CircleShape,
-                                    color = statusColor,
-                                    tonalElevation = 2.dp
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = dayNum.toString(),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (date == LocalDate.now()) FontWeight.ExtraBold else FontWeight.Normal,
-                                            color = if (records.isNotEmpty()) Color.White else MaterialTheme.colorScheme.onSurface
-                                        )
+            Spacer(Modifier.height(8.dp))
+
+            // Calendar Grid
+            val totalCells = ((daysInMonth + firstDayOfWeek + 6) / 7) * 7
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (row in 0 until totalCells / 7) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        for (col in 0 until 7) {
+                            val dayNum = row * 7 + col - firstDayOfWeek + 1
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
+                                if (dayNum in 1..daysInMonth) {
+                                    val date = currentMonth.atDay(dayNum)
+                                    val records = historyByDate[date] ?: emptyList()
+                                    
+                                    val statusColor = when {
+                                        records.isEmpty() -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                        records.isNotEmpty() && records.all { it.status == "TAKEN" } -> Color(0xFF4CAF50) // Green
+                                        records.isNotEmpty() && records.all { it.status == "SKIPPED" } -> MaterialTheme.colorScheme.error
+                                        else -> Color(0xFFFFC107) // Yellow/Amber for partial
+                                    }
+
+                                    Surface(
+                                        modifier = Modifier.fillMaxSize(0.8f),
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                        color = statusColor,
+                                        tonalElevation = 2.dp
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = dayNum.toString(),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = if (date == LocalDate.now()) FontWeight.ExtraBold else FontWeight.Normal,
+                                                color = if (records.isNotEmpty()) Color.White else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -391,20 +520,20 @@ fun CalendarView(history: List<com.example.medicinetracker.data.model.DoseRecord
                     }
                 }
             }
-        }
-        
-        Spacer(Modifier.height(32.dp))
-        
-        // Legend
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Legend", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                LegendItem(Color(0xFF4CAF50), "All Doses Taken")
-                LegendItem(Color(0xFFFFC107), "Partial Adherence")
-                LegendItem(MaterialTheme.colorScheme.error, "All Doses Skipped")
+            
+            Spacer(Modifier.height(32.dp))
+            
+            // Legend
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Legend", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    LegendItem(Color(0xFF4CAF50), "All Doses Taken")
+                    LegendItem(Color(0xFFFFC107), "Partial Adherence")
+                    LegendItem(MaterialTheme.colorScheme.error, "All Doses Skipped")
+                }
             }
         }
     }
@@ -419,20 +548,48 @@ fun LegendItem(color: Color, text: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MedicineCard(medicine: Medicine, onClick: () -> Unit) {
+fun MedicineCard(
+    medicine: Medicine, 
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                }
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = medicine.name, 
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = medicine.name, 
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Medicine",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                    )
+                }
+            }
             Text(text = "${medicine.dosage} - ${medicine.type}", style = MaterialTheme.typography.bodyMedium)
             
             Spacer(Modifier.height(8.dp))

@@ -144,6 +144,16 @@ private fun populateBrands() {
         alarmScheduler.cancelAlarms(medicine)
     }
 
+    fun logDose(medicine: Medicine, status: String) = viewModelScope.launch {
+        val record = com.example.medicinetracker.data.model.DoseRecord(
+            medicineId = medicine.id,
+            medicineName = medicine.name,
+            dateTimeString = java.time.LocalDateTime.now().toString(),
+            status = status
+        )
+        repository.saveDoseRecord(record)
+    }
+
     fun deleteDoseRecord(record: com.example.medicinetracker.data.model.DoseRecord) = viewModelScope.launch {
         repository.deleteDoseRecord(record)
     }

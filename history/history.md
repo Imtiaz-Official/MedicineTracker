@@ -50,6 +50,8 @@
 ---
 
 ### 📝 Change Log (Git-Style)
+- **feat(ui)**: [2026-03-19] Added long-press options (Take, Skip, Edit, Delete) and ModalBottomSheet to Dashboard.
+- **feat(logic)**: [2026-03-19] Implemented dose logging (TAKEN/SKIPPED) directly from the dashboard.
 - **feat(ui)**: [2026-03-19] Implemented Dashboard and Add Medicine screens using Jetpack Compose and Material 3.
 - **feat(data)**: [2026-03-19] Set up Room Database, DAO, and Type Converters for medicine tracking.
 - **feat(viewmodel)**: [2026-03-19] Added MedicineViewModel and Repository for state management.
