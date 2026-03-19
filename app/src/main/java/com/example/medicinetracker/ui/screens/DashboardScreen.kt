@@ -228,7 +228,8 @@ fun DashboardScreen(
                     onMedicineLongClick = {
                         medicineWithOptions = it
                         showOptionsSheet = true
-                    }
+                    },
+                    viewModel = viewModel
                 )
                 1 -> HistoryList(history, onRemoveRecord = { recordToDelete = it })
                 2 -> CalendarView(history)
@@ -431,7 +432,8 @@ fun MedicineList(
     medicines: List<Medicine>, 
     onMedicineClick: (Medicine) -> Unit,
     onMedicineDelete: (Medicine) -> Unit,
-    onMedicineLongClick: (Medicine) -> Unit
+    onMedicineLongClick: (Medicine) -> Unit,
+    viewModel: MedicineViewModel
 ) {
     if (medicines.isEmpty()) {
         Box(
@@ -453,17 +455,25 @@ fun MedicineList(
             }
         }
     } else {
+        val nextDose = remember(medicines) { findNextDose(medicines) }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (nextDose != null) {
+                item {
+                    NextDoseCard(nextDose, onTakeNow = { viewModel.logDose(nextDose.medicine, "TAKEN") })
+                }
+            }
+
             item {
                 Text(
-                    "Ongoing Medications",
+                    "All Medications",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
             }
             items(medicines) { medicine ->
@@ -473,6 +483,90 @@ fun MedicineList(
                     onLongClick = { onMedicineLongClick(medicine) },
                     onDeleteClick = { onMedicineDelete(medicine) }
                 )
+            }
+        }
+    }
+}
+
+data class NextDoseInfo(
+    val medicine: Medicine,
+    val time: LocalTime,
+    val label: String
+)
+
+private fun findNextDose(medicines: List<Medicine>): NextDoseInfo? {
+    val now = LocalTime.now()
+    val today = LocalDate.now()
+    
+    val allUpcoming = mutableListOf<NextDoseInfo>()
+    
+    for (medicine in medicines) {
+        // Simple logic for now: check today's remaining times
+        val upcomingToday = medicine.timesPerDay
+            .filter { it.isAfter(now) }
+            .map { NextDoseInfo(medicine, it, "Today") }
+        
+        allUpcoming.addAll(upcomingToday)
+        
+        // Also check tomorrow's first time as fallback
+        val firstTomorrow = medicine.timesPerDay.minOrNull()
+        if (firstTomorrow != null) {
+            allUpcoming.add(NextDoseInfo(medicine, firstTomorrow, "Tomorrow"))
+        }
+    }
+    
+    return allUpcoming.sortedWith(compareBy({ it.label == "Tomorrow" }, { it.time })).firstOrNull()
+}
+
+@Composable
+fun NextDoseCard(info: NextDoseInfo, onTakeNow: () -> Unit) {
+    val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "NEXT DOSE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    info.medicine.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Schedule, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${info.label} at ${info.time.format(timeFormatter)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            
+            Button(
+                onClick = onTakeNow,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Take Now")
             }
         }
     }
