@@ -1,0 +1,22 @@
+# Android Gradle
+.gradle/
+build/
+app/build/
+*.iml
+.idea/
+
+# Local configuration
+local.properties
+
+# Secrets
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CSV and DB files (assuming these are data sources/backups)
+*.csv
+*.db
+dosage/
