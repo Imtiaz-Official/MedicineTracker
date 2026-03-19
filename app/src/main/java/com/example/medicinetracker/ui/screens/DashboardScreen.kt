@@ -4,10 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,11 +17,15 @@ import java.time.format.TextStyle
 import java.util.Locale
 import java.time.LocalDateTime
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import java.time.YearMonth
+import androidx.compose.ui.draw.rotate
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -79,16 +81,22 @@ fun DashboardScreen(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    icon = { Icon(Icons.Default.MedicalServices, contentDescription = null) },
                     label = { Text("Medicines") },
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 }
                 )
                 NavigationBarItem(
-                    icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                    icon = { Icon(Icons.Default.History, contentDescription = null) },
                     label = { Text("History") },
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                    label = { Text("Calendar") },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 }
                 )
             }
         },
@@ -105,10 +113,10 @@ fun DashboardScreen(
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            if (selectedTab == 0) {
-                MedicineList(medicines, onMedicineClick)
-            } else {
-                HistoryList(history, onRemoveRecord = { recordToDelete = it })
+            when (selectedTab) {
+                0 -> MedicineList(medicines, onMedicineClick)
+                1 -> HistoryList(history, onRemoveRecord = { recordToDelete = it })
+                2 -> CalendarView(history)
             }
         }
     }
@@ -287,6 +295,127 @@ fun HistoryList(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CalendarView(history: List<com.example.medicinetracker.data.model.DoseRecord>) {
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    
+    val daysInMonth = currentMonth.lengthOfMonth()
+    val firstOfMonth = currentMonth.atDay(1)
+    val firstDayOfWeek = firstOfMonth.dayOfWeek.value % 7 // Sunday = 0
+
+    val historyByDate = remember(history) {
+        history.groupBy { LocalDateTime.parse(it.dateTimeString).toLocalDate() }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // Month Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+            }
+            Text(
+                text = "${currentMonth.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack, 
+                    modifier = Modifier.rotate(180f), 
+                    contentDescription = "Next Month"
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Weekdays Header
+        Row(modifier = Modifier.fillMaxWidth()) {
+            val weekdays = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            weekdays.forEach { day ->
+                Text(
+                    text = day,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Calendar Grid
+        val totalCells = ((daysInMonth + firstDayOfWeek + 6) / 7) * 7
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (row in 0 until totalCells / 7) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    for (col in 0 until 7) {
+                        val dayNum = row * 7 + col - firstDayOfWeek + 1
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
+                            if (dayNum in 1..daysInMonth) {
+                                val date = currentMonth.atDay(dayNum)
+                                val records = historyByDate[date] ?: emptyList()
+                                
+                                val statusColor = when {
+                                    records.isEmpty() -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    records.all { it.status == "TAKEN" } -> Color(0xFF4CAF50) // Green
+                                    records.all { it.status == "SKIPPED" } -> MaterialTheme.colorScheme.error
+                                    else -> Color(0xFFFFC107) // Yellow/Amber for partial
+                                }
+
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(0.8f),
+                                    shape = androidx.compose.foundation.shape.CircleShape,
+                                    color = statusColor,
+                                    tonalElevation = 2.dp
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = dayNum.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (date == LocalDate.now()) FontWeight.ExtraBold else FontWeight.Normal,
+                                            color = if (records.isNotEmpty()) Color.White else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(Modifier.height(32.dp))
+        
+        // Legend
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Legend", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                LegendItem(Color(0xFF4CAF50), "All Doses Taken")
+                LegendItem(Color(0xFFFFC107), "Partial Adherence")
+                LegendItem(MaterialTheme.colorScheme.error, "All Doses Skipped")
+            }
+        }
+    }
+}
+
+@Composable
+fun LegendItem(color: Color, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(12.dp).background(color, androidx.compose.foundation.shape.CircleShape))
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodySmall)
     }
 }
 
