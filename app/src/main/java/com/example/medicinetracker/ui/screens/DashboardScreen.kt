@@ -892,11 +892,11 @@ fun MedicineCard(
     
     // Category-based colors for a beautiful dashboard
     val (containerColor, contentColor, icon) = when (medicine.type.lowercase()) {
-        "tablet" -> Triple(Color(0xFFE3F2FD), Color(0xFF1976D2), Icons.Default.TableChart)
-        "capsule" -> Triple(Color(0xFFF3E5F5), Color(0xFF7B1FA2), Icons.Default.Grain)
-        "syrup" -> Triple(Color(0xFFE8F5E9), Color(0xFF388E3C), Icons.Default.WaterDrop)
-        "injection" -> Triple(Color(0xFFFFF3E0), Color(0xFFF57C00), Icons.Default.Medication)
-        else -> Triple(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.colorScheme.primary, Icons.Default.MedicalServices)
+        "tablet" -> Triple(Color(0xFFE3F2FD), Color(0xFF1976D2), Icons.Default.MedicalServices)
+        "capsule" -> Triple(Color(0xFFF3E5F5), Color(0xFF7B1FA2), Icons.Default.Science)
+        "syrup" -> Triple(Color(0xFFE8F5E9), Color(0xFF388E3C), Icons.Default.Opacity)
+        "injection" -> Triple(Color(0xFFFFF3E0), Color(0xFFF57C00), Icons.Default.Vaccines)
+        else -> Triple(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.colorScheme.primary, Icons.Default.Medication)
     }
 
     Card(
