@@ -221,8 +221,9 @@ class MedicineViewModel(
 
     fun searchMedicine(query: String) {
         searchJob?.cancel()
-        if (query.length < 2) {
+        if (query.trim().length < 2) {
             _suggestions.value = emptyList()
+            _isSearching.value = false
             return
         }
 
