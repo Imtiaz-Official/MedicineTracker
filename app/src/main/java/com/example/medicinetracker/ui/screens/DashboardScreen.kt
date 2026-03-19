@@ -243,6 +243,7 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val searchFilter by viewModel.searchFilter.collectAsState()
     val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
@@ -252,30 +253,52 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 2.dp
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.performDedicatedSearch(it) },
-                placeholder = { Text("Search 20,000+ medicines...", style = MaterialTheme.typography.bodyLarge) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.performDedicatedSearch("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.performDedicatedSearch(it) },
+                    placeholder = { Text("Search 20,000+ medicines...", style = MaterialTheme.typography.bodyLarge) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.performDedicatedSearch("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                    }
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
                 )
-            )
+                
+                // Filter Chips
+                androidx.compose.foundation.lazy.LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val filters = listOf("All", "Brand", "Generic")
+                    items(filters.size) { index ->
+                        val filter = filters[index]
+                        FilterChip(
+                            selected = searchFilter == filter,
+                            onClick = { viewModel.setSearchFilter(filter) },
+                            label = { Text(filter) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+            }
         }
 
         if (isSearching) {

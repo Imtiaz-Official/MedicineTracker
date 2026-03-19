@@ -45,6 +45,9 @@ class MedicineViewModel(
     private val _isSearching = MutableStateFlow(false)
     val isSearching = _isSearching.asStateFlow()
 
+    private val _searchFilter = MutableStateFlow("All")
+    val searchFilter = _searchFilter.asStateFlow()
+
     private val _selectedGenericInfo = MutableStateFlow<com.example.medicinetracker.data.model.GenericInfo?>(null)
     val selectedGenericInfo = _selectedGenericInfo.asStateFlow()
 
@@ -311,6 +314,14 @@ class MedicineViewModel(
         }
     }
 
+    fun setSearchFilter(filter: String) {
+        _searchFilter.value = filter
+        // Re-run search with current query to apply filter immediately
+        if (_searchQuery.value.isNotEmpty()) {
+            performDedicatedSearch(_searchQuery.value)
+        }
+    }
+
     fun performDedicatedSearch(query: String) {
         _searchQuery.value = query
         dedicatedSearchJob?.cancel()
@@ -339,9 +350,16 @@ class MedicineViewModel(
             // Merge results, avoiding duplicates by name
             val combinedResults = (localResults + liveResults).distinctBy { "${it.name}-${it.generic}-${it.strength}" }
             
-            android.util.Log.d("MedicineViewModel", "Search for '$query': ${localResults.size} local, ${liveResults.size} live. Combined: ${combinedResults.size}")
+            // Apply current filter
+            val filteredResults = when (_searchFilter.value) {
+                "Brand" -> combinedResults.filter { it.name.contains(query, ignoreCase = true) }
+                "Generic" -> combinedResults.filter { it.generic.contains(query, ignoreCase = true) }
+                else -> combinedResults
+            }
             
-            _searchResults.value = combinedResults
+            android.util.Log.d("MedicineViewModel", "Search for '$query': ${localResults.size} local, ${liveResults.size} live. Filter: ${_searchFilter.value}. Combined: ${filteredResults.size}")
+            
+            _searchResults.value = filteredResults
             _isSearching.value = false
         }
     }
