@@ -33,8 +33,7 @@ fun MedicineBrandDetailScreen(
 ) {
     val genericInfo by viewModel.selectedGenericInfo.collectAsState()
     val isLoading by viewModel.isLoadingGenericInfo.collectAsState()
-    val alternateBrands by viewModel.alternateBrands.collectAsState()
-    val liveAlternateBrands by viewModel.liveAlternateBrands.collectAsState()
+    val combinedAlternates by viewModel.combinedAlternateBrands.collectAsState()
 
     LaunchedEffect(brand.id) {
         viewModel.getGenericInfo(brand)
@@ -55,8 +54,7 @@ fun MedicineBrandDetailScreen(
         MedicineBrandDetailView(
             brand = brand,
             genericInfo = genericInfo,
-            alternateBrands = alternateBrands,
-            liveAlternateBrands = liveAlternateBrands,
+            alternateBrands = combinedAlternates,
             isLoading = isLoading,
             viewModel = viewModel,
             onBrandClick = { newBrand ->
@@ -66,6 +64,7 @@ fun MedicineBrandDetailScreen(
         )
     }
     }
+
     @Composable
     fun AlternateBrandCard(
     brand: MedicineBrand,
@@ -157,7 +156,6 @@ fun MedicineBrandDetailView(
     brand: MedicineBrand,
     genericInfo: GenericInfo?,
     alternateBrands: List<MedicineBrand>,
-    liveAlternateBrands: List<MedicineBrand>,
     isLoading: Boolean,
     viewModel: MedicineViewModel,
     onBrandClick: (MedicineBrand) -> Unit,
@@ -233,52 +231,14 @@ fun MedicineBrandDetailView(
                 DetailItem(label = "Pack Size", value = brand.packageSize)
             }
 
-            // Live Alternates Section
-            if (liveAlternateBrands.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Live Alternates",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.extraSmall
-                    ) {
-                        Text(
-                            text = "MEDEX",
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                androidx.compose.foundation.lazy.LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 4.dp)
-                ) {
-                    items(liveAlternateBrands.size) { index ->
-                        val altBrand = liveAlternateBrands[index]
-                        AlternateBrandCard(
-                            brand = altBrand,
-                            onClick = { onBrandClick(altBrand) }
-                        )
-                    }
-                }
-            }
-
-            // Local Alternates Section
+            // Unified Alternates Section
             if (alternateBrands.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Local Alternates",
+                    text = "Other Alternatives",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 androidx.compose.foundation.lazy.LazyRow(

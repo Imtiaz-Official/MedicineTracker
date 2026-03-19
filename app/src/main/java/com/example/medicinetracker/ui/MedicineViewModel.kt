@@ -57,6 +57,9 @@ class MedicineViewModel(
     private val _liveAlternateBrands = MutableStateFlow<List<MedicineBrand>>(emptyList())
     val liveAlternateBrands = _liveAlternateBrands.asStateFlow()
 
+    private val _combinedAlternateBrands = MutableStateFlow<List<MedicineBrand>>(emptyList())
+    val combinedAlternateBrands = _combinedAlternateBrands.asStateFlow()
+
     private val _isLiveLoading = MutableStateFlow(false)
     val isLiveLoading = _isLiveLoading.asStateFlow()
 
@@ -213,8 +216,15 @@ class MedicineViewModel(
                     MedexCrawler.fetchAlternateBrandsFromMedex(brand.name)
                 }
 
-                _alternateBrands.value = localAlternatesDeferred.await()
-                _liveAlternateBrands.value = liveAlternatesDeferred.await()
+                val local = localAlternatesDeferred.await()
+                val live = liveAlternatesDeferred.await()
+                
+                _alternateBrands.value = local
+                _liveAlternateBrands.value = live
+                
+                // Merge logic: If live is available, use it (it's newer). 
+                // Always fallback to local if live is empty.
+                _combinedAlternateBrands.value = if (live.isNotEmpty()) live else local
             }
         }
     }
@@ -236,6 +246,11 @@ class MedicineViewModel(
             }
             _liveAlternateBrands.value = liveAlts
             
+            // Update combined: if we just got live ones, they take priority
+            if (liveAlts.isNotEmpty()) {
+                _combinedAlternateBrands.value = liveAlts
+            }
+            
             _isLiveLoading.value = false
         }
     }
@@ -245,6 +260,7 @@ class MedicineViewModel(
         _isLoadingGenericInfo.value = false
         _alternateBrands.value = emptyList()
         _liveAlternateBrands.value = emptyList()
+        _combinedAlternateBrands.value = emptyList()
     }
 
     fun searchMedicine(query: String) {
