@@ -54,6 +54,9 @@ class MedicineViewModel(
     private val _alternateBrands = MutableStateFlow<List<MedicineBrand>>(emptyList())
     val alternateBrands = _alternateBrands.asStateFlow()
 
+    private val _liveAlternateBrands = MutableStateFlow<List<MedicineBrand>>(emptyList())
+    val liveAlternateBrands = _liveAlternateBrands.asStateFlow()
+
     private val _isLiveLoading = MutableStateFlow(false)
     val isLiveLoading = _isLiveLoading.asStateFlow()
 
@@ -201,11 +204,18 @@ class MedicineViewModel(
             _isLoadingGenericInfo.value = false
             _isLiveLoading.value = false
 
-            // Fetch alternate brands locally
-            val alternates = withContext(Dispatchers.IO) {
-                repository.getAlternateBrands(brand.generic, brand.name)
+            // Fetch alternates in parallel
+            viewModelScope.launch {
+                val localAlternatesDeferred = async(Dispatchers.IO) {
+                    repository.getAlternateBrands(brand.generic, brand.name)
+                }
+                val liveAlternatesDeferred = async(Dispatchers.IO) {
+                    MedexCrawler.fetchAlternateBrandsFromMedex(brand.name)
+                }
+
+                _alternateBrands.value = localAlternatesDeferred.await()
+                _liveAlternateBrands.value = liveAlternatesDeferred.await()
             }
-            _alternateBrands.value = alternates
         }
     }
 
@@ -219,6 +229,13 @@ class MedicineViewModel(
             if (info != null) {
                 _selectedGenericInfo.value = info
             }
+            
+            // Also refresh live alternates
+            val liveAlts = withContext(Dispatchers.IO) {
+                MedexCrawler.fetchAlternateBrandsFromMedex(brand.name)
+            }
+            _liveAlternateBrands.value = liveAlts
+            
             _isLiveLoading.value = false
         }
     }
@@ -227,6 +244,7 @@ class MedicineViewModel(
         _selectedGenericInfo.value = null
         _isLoadingGenericInfo.value = false
         _alternateBrands.value = emptyList()
+        _liveAlternateBrands.value = emptyList()
     }
 
     fun searchMedicine(query: String) {

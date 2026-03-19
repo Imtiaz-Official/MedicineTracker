@@ -124,6 +124,77 @@ object MedexCrawler {
         }
     }
 
+    suspend fun fetchAlternateBrandsFromMedex(brandName: String): List<MedicineBrand> {
+        return try {
+            // 1. Search for the brand to get its page
+            val searchUrl = "$BASE_URL/search?search=${brandName.replace(" ", "+")}"
+            val searchDoc = Jsoup.connect(searchUrl)
+                .userAgent(USER_AGENT)
+                .timeout(10000)
+                .get()
+            
+            val brandLink = searchDoc.select("div.search-result-row div.search-result-title a").firstOrNull()
+            val brandUrl = if (brandLink != null) {
+                val href = brandLink.attr("href")
+                if (href.startsWith("http")) href else BASE_URL + href
+            } else null
+
+            if (brandUrl == null) return emptyList()
+
+            // 2. Load brand page
+            val brandDoc = Jsoup.connect(brandUrl)
+                .userAgent(USER_AGENT)
+                .timeout(10000)
+                .get()
+            
+            // 3. Find the "Other Brands" or "Available Brands" link/section
+            // Usually Medex has a link like "Other Brands" on the generic page
+            val genericLink = brandDoc.select("a[href*=\"/generics/\"]").firstOrNull()
+            val genericUrl = if (genericLink != null) {
+                val href = genericLink.attr("href")
+                if (href.startsWith("http")) href else BASE_URL + href
+            } else null
+
+            if (genericUrl == null) return emptyList()
+
+            // 4. Load the generic page which contains the list of ALL brands for that generic
+            val genericDoc = Jsoup.connect(genericUrl)
+                .userAgent(USER_AGENT)
+                .timeout(10000)
+                .get()
+            
+            val results = mutableListOf<MedicineBrand>()
+            
+            // Medex generic pages list brands in rows
+            val brandItems = genericDoc.select("div.hoverable-block, div.search-result-row")
+            for (item in brandItems) {
+                val nameElement = item.select("div.brand-name, div.search-result-title a").firstOrNull()
+                val name = nameElement?.text()?.trim() ?: ""
+                
+                // Skip the brand we are currently looking at
+                if (name.contains(brandName, ignoreCase = true)) continue
+
+                if (name.isNotEmpty()) {
+                    val manufacturer = item.select("div.company-name, p").firstOrNull()?.text()?.replace(Regex(".*manufactured by ", RegexOption.IGNORE_CASE), "")?.trim() ?: ""
+                    
+                    results.add(MedicineBrand(
+                        id = System.currentTimeMillis() + results.size,
+                        name = name,
+                        generic = "", // We already know the generic from the page context
+                        strength = item.select("div.strength").text().trim(),
+                        manufacturer = manufacturer,
+                        dosageForm = item.select("div.dosage-form").text().trim(),
+                        genericId = null
+                    ))
+                }
+            }
+            results.distinctBy { it.name }.take(15)
+        } catch (e: Exception) {
+            Log.e("MedexCrawler", "Error fetching alternates for $brandName", e)
+            emptyList()
+        }
+    }
+
     private fun parseGenericMonograph(doc: Document, genericName: String): GenericInfo {
         fun getSection(title: String): String? {
             // Medex now uses h3 titles with class ac-header
