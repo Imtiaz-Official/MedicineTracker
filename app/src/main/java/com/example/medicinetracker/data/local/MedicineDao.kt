@@ -13,9 +13,12 @@ interface MedicineDao {
            OR generic LIKE '%' || :query || '%'
         ORDER BY 
             CASE 
-                WHEN name LIKE :query || '%' THEN 1 
-                WHEN generic LIKE :query || '%' THEN 2
-                ELSE 3 
+                WHEN LOWER(name) = LOWER(:query) THEN 1
+                WHEN LOWER(name) LIKE LOWER(:query) || ' %' THEN 2
+                WHEN LOWER(name) LIKE LOWER(:query) || '%' THEN 3
+                WHEN LOWER(generic) = LOWER(:query) THEN 4
+                WHEN LOWER(generic) LIKE LOWER(:query) || '%' THEN 5
+                ELSE 6
             END, 
             name ASC 
         LIMIT 50

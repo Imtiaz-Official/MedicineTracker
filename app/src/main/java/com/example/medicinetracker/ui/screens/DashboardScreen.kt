@@ -243,6 +243,8 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -322,7 +324,14 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
                 contentPadding = PaddingValues(16.dp)
             ) {
                 items(searchResults) { brand ->
-                    SearchMedicineCard(brand = brand, onClick = { onBrandClick(brand) })
+                    SearchMedicineCard(
+                        brand = brand, 
+                        onClick = { 
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            onBrandClick(brand) 
+                        }
+                    )
                 }
             }
         }

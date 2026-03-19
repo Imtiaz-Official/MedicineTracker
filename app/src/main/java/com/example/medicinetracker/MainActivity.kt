@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import com.example.medicinetracker.data.MedicineRepository
 import com.example.medicinetracker.data.local.MedicineDatabase
 import com.example.medicinetracker.data.local.MedicinePrefsManager
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import com.example.medicinetracker.data.model.Medicine
 import com.example.medicinetracker.data.model.MedicineBrand
 import com.example.medicinetracker.ui.MedicineViewModel
@@ -85,44 +87,46 @@ fun MedicineApp(viewModel: MedicineViewModel) {
     var selectedBrand by remember { mutableStateOf<MedicineBrand?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    when (currentScreen) {
-        "dashboard" -> DashboardScreen(
-            viewModel = viewModel,
-            selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
-            onAddMedicineClick = { 
-                selectedMedicine = null
-                currentScreen = "add_medicine" 
-            },
-            onMedicineClick = { medicine ->
-                selectedMedicine = medicine
-                currentScreen = "add_medicine"
-            },
-            onBrandClick = { brand ->
-                selectedBrand = brand
-                currentScreen = "medicine_brand_detail"
-            }
-        )
-        "add_medicine" -> {
-            BackHandler {
-                currentScreen = "dashboard"
-            }
-            AddMedicineScreen(
+    Crossfade(targetState = currentScreen, animationSpec = tween(400), label = "screenTransition") { screen ->
+        when (screen) {
+            "dashboard" -> DashboardScreen(
                 viewModel = viewModel,
-                medicine = selectedMedicine,
-                onBack = { currentScreen = "dashboard" }
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                onAddMedicineClick = { 
+                    selectedMedicine = null
+                    currentScreen = "add_medicine" 
+                },
+                onMedicineClick = { medicine ->
+                    selectedMedicine = medicine
+                    currentScreen = "add_medicine"
+                },
+                onBrandClick = { brand ->
+                    selectedBrand = brand
+                    currentScreen = "medicine_brand_detail"
+                }
             )
-        }
-        "medicine_brand_detail" -> {
-            BackHandler {
-                currentScreen = "dashboard"
-            }
-            selectedBrand?.let { brand ->
-                MedicineBrandDetailScreen(
-                    brand = brand,
+            "add_medicine" -> {
+                BackHandler {
+                    currentScreen = "dashboard"
+                }
+                AddMedicineScreen(
                     viewModel = viewModel,
+                    medicine = selectedMedicine,
                     onBack = { currentScreen = "dashboard" }
                 )
+            }
+            "medicine_brand_detail" -> {
+                BackHandler {
+                    currentScreen = "dashboard"
+                }
+                selectedBrand?.let { brand ->
+                    MedicineBrandDetailScreen(
+                        brand = brand,
+                        viewModel = viewModel,
+                        onBack = { currentScreen = "dashboard" }
+                    )
+                }
             }
         }
     }

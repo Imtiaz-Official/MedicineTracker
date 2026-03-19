@@ -1,5 +1,7 @@
 package com.example.medicinetracker.ui
 
+import com.example.medicinetracker.util.MedexCrawler
+import com.example.medicinetracker.util.AssetEncryptionUtil
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -21,6 +23,7 @@ import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
 class MedicineViewModel(
@@ -48,6 +51,9 @@ class MedicineViewModel(
     private val _isLoadingGenericInfo = MutableStateFlow(false)
     val isLoadingGenericInfo = _isLoadingGenericInfo.asStateFlow()
 
+    private val _isLiveLoading = MutableStateFlow(false)
+    val isLiveLoading = _isLiveLoading.asStateFlow()
+
     private val _dosageForms = MutableStateFlow<List<DosageForm>>(emptyList())
     val dosageForms = _dosageForms.asStateFlow()
 
@@ -59,7 +65,7 @@ class MedicineViewModel(
     private fun loadDosageForms() {
         viewModelScope.launch {
             try {
-                val jsonString = getApplication<Application>().assets.open("dosage_forms.json").bufferedReader().use { it.readText() }
+                val jsonString = AssetEncryptionUtil.getDecryptedStream(getApplication(), "dosage_forms.json").bufferedReader().use { it.readText() }
                 val jsonArray = JSONArray(jsonString)
                 val list = mutableListOf<DosageForm>()
                 for (i in 0 until jsonArray.length()) {
@@ -72,48 +78,49 @@ class MedicineViewModel(
             }
         }
     }
-private fun populateBrands() {
-    viewModelScope.launch {
-        try {
-            val count = withContext(Dispatchers.IO) { repository.getBrandCount() }
-            android.util.Log.d("MedicineViewModel", "Current brand count in DB: $count")
-            if (count > 20000) {
-                android.util.Log.d("MedicineViewModel", "Database already populated.")
-                return@launch
-            }
 
-            android.util.Log.d("MedicineViewModel", "Starting brand population from assets...")
+    private fun populateBrands() {
+        viewModelScope.launch {
+            try {
+                val count = withContext(Dispatchers.IO) { repository.getBrandCount() }
+                android.util.Log.d("MedicineViewModel", "Current brand count in DB: $count")
+                if (count > 20000) {
+                    android.util.Log.d("MedicineViewModel", "Database already populated.")
+                    return@launch
+                }
 
-            // 1. Populate Generics first
-            val genericsJson = getApplication<Application>().assets.open("medicine_generics.json").bufferedReader().use { it.readText() }
-            val genericsArray = JSONArray(genericsJson)
-            val genericsList = mutableListOf<com.example.medicinetracker.data.model.GenericInfo>()
-            for (i in 0 until genericsArray.length()) {
-                val obj = genericsArray.getJSONObject(i)
-                genericsList.add(com.example.medicinetracker.data.model.GenericInfo(
-                    id = obj.getLong("id"),
-                    name = obj.getString("name"),
-                    indication = obj.optString("indication").takeIf { it != "null" && it.isNotBlank() },
-                    therapeuticClass = obj.optString("therapeuticClass").takeIf { it != "null" && it.isNotBlank() },
-                    pharmacology = obj.optString("pharmacology").takeIf { it != "null" && it.isNotBlank() },
-                    dosage = obj.optString("dosage").takeIf { it != "null" && it.isNotBlank() },
-                    administration = obj.optString("administration").takeIf { it != "null" && it.isNotBlank() },
-                    interaction = obj.optString("interaction").takeIf { it != "null" && it.isNotBlank() },
-                    contraindications = obj.optString("contraindications").takeIf { it != "null" && it.isNotBlank() },
-                    sideEffects = obj.optString("sideEffects").takeIf { it != "null" && it.isNotBlank() },
-                    pregnancyLactation = obj.optString("pregnancyLactation").takeIf { it != "null" && it.isNotBlank() },
-                    precautions = obj.optString("precautions").takeIf { it != "null" && it.isNotBlank() },
-                    storage = obj.optString("storage").takeIf { it != "null" && it.isNotBlank() }
-                ))
-            }
-            withContext(Dispatchers.IO) { 
-                repository.insertGenerics(genericsList) 
-                android.util.Log.d("MedicineViewModel", "Populated ${genericsList.size} generics")
-            }
+                android.util.Log.d("MedicineViewModel", "Starting brand population from encrypted assets...")
 
-            // 2. Populate Brands
-            val brandsJson = getApplication<Application>().assets.open("medicine_brands.json").bufferedReader().use { it.readText() }
-            val brandsArray = JSONArray(brandsJson)
+                // 1. Populate Generics first
+                val genericsJson = AssetEncryptionUtil.getDecryptedStream(getApplication(), "medicine_generics.json").bufferedReader().use { it.readText() }
+                val genericsArray = JSONArray(genericsJson)
+                val genericsList = mutableListOf<com.example.medicinetracker.data.model.GenericInfo>()
+                for (i in 0 until genericsArray.length()) {
+                    val obj = genericsArray.getJSONObject(i)
+                    genericsList.add(com.example.medicinetracker.data.model.GenericInfo(
+                        id = obj.getLong("id"),
+                        name = obj.getString("name"),
+                        indication = obj.optString("indication").takeIf { it != "null" && it.isNotBlank() },
+                        therapeuticClass = obj.optString("therapeuticClass").takeIf { it != "null" && it.isNotBlank() },
+                        pharmacology = obj.optString("pharmacology").takeIf { it != "null" && it.isNotBlank() },
+                        dosage = obj.optString("dosage").takeIf { it != "null" && it.isNotBlank() },
+                        administration = obj.optString("administration").takeIf { it != "null" && it.isNotBlank() },
+                        interaction = obj.optString("interaction").takeIf { it != "null" && it.isNotBlank() },
+                        contraindications = obj.optString("contraindications").takeIf { it != "null" && it.isNotBlank() },
+                        sideEffects = obj.optString("sideEffects").takeIf { it != "null" && it.isNotBlank() },
+                        pregnancyLactation = obj.optString("pregnancyLactation").takeIf { it != "null" && it.isNotBlank() },
+                        precautions = obj.optString("precautions").takeIf { it != "null" && it.isNotBlank() },
+                        storage = obj.optString("storage").takeIf { it != "null" && it.isNotBlank() }
+                    ))
+                }
+                withContext(Dispatchers.IO) { 
+                    repository.insertGenerics(genericsList) 
+                    android.util.Log.d("MedicineViewModel", "Populated ${genericsList.size} generics")
+                }
+
+                // 2. Populate Brands
+                val brandsJson = AssetEncryptionUtil.getDecryptedStream(getApplication(), "medicine_brands.json").bufferedReader().use { it.readText() }
+                val brandsArray = JSONArray(brandsJson)
 
             val total = brandsArray.length()
             val chunkSize = 1000
@@ -160,18 +167,50 @@ private fun populateBrands() {
     fun getGenericInfo(brand: MedicineBrand) {
         viewModelScope.launch {
             _isLoadingGenericInfo.value = true
+            _isLiveLoading.value = true
             _selectedGenericInfo.value = null
-            android.util.Log.d("MedicineViewModel", "Fetching generic info for brand: ${brand.name}, generic: ${brand.generic}, genericId: ${brand.genericId}")
-            val info = withContext(Dispatchers.IO) {
-                if (brand.genericId != null) {
-                    repository.getGenericInfoById(brand.genericId)
-                } else {
-                    repository.getGenericInfoByName(brand.generic)
-                }
+            
+            android.util.Log.d("MedicineViewModel", "Fetching generic info for brand: ${brand.name}")
+            
+            // 1. Try Live Medex Crawler FIRST
+            android.util.Log.d("MedicineViewModel", "Attempting Medex crawl first...")
+            var info = withContext(Dispatchers.IO) {
+                MedexCrawler.fetchMonographFromMedex(brand.name, brand.generic)
             }
-            android.util.Log.d("MedicineViewModel", "Fetch complete. Info found: ${info != null}")
+
+            // 2. Fallback to Local Database if Live fails
+            if (info == null) {
+                android.util.Log.d("MedicineViewModel", "Medex crawl failed or returned no data. Falling back to local...")
+                _isLiveLoading.value = false
+                info = withContext(Dispatchers.IO) {
+                    if (brand.genericId != null) {
+                        repository.getGenericInfoById(brand.genericId)
+                    } else {
+                        repository.getGenericInfoByName(brand.generic)
+                    }
+                }
+                android.util.Log.d("MedicineViewModel", "Local fallback complete. Info found: ${info != null}")
+            } else {
+                android.util.Log.d("MedicineViewModel", "Successfully fetched LIVE info from Medex.")
+            }
+
             _selectedGenericInfo.value = info
             _isLoadingGenericInfo.value = false
+            _isLiveLoading.value = false
+        }
+    }
+
+    fun refreshFromMedex(brand: MedicineBrand) {
+        viewModelScope.launch {
+            _isLiveLoading.value = true
+            android.util.Log.d("MedicineViewModel", "Manual refresh from Medex for ${brand.name}")
+            val info = withContext(Dispatchers.IO) {
+                MedexCrawler.fetchMonographFromMedex(brand.name, brand.generic)
+            }
+            if (info != null) {
+                _selectedGenericInfo.value = info
+            }
+            _isLiveLoading.value = false
         }
     }
 
@@ -218,12 +257,25 @@ private fun populateBrands() {
         dedicatedSearchJob = viewModelScope.launch {
             _isSearching.value = true
             kotlinx.coroutines.delay(300)
-            val results = withContext(Dispatchers.IO) {
-                val res = repository.searchBrands(query)
-                android.util.Log.d("MedicineViewModel", "Dedicated search for '$query' returned ${res.size} results")
-                res
+            
+            // Search local database and Medex in parallel
+            val localResultsDeferred = async(Dispatchers.IO) {
+                repository.searchBrands(query)
             }
-            _searchResults.value = results
+            
+            val liveResultsDeferred = async(Dispatchers.IO) {
+                MedexCrawler.searchBrandsFromMedex(query)
+            }
+            
+            val localResults = localResultsDeferred.await()
+            val liveResults = liveResultsDeferred.await()
+            
+            // Merge results, avoiding duplicates by name
+            val combinedResults = (localResults + liveResults).distinctBy { "${it.name}-${it.generic}-${it.strength}" }
+            
+            android.util.Log.d("MedicineViewModel", "Search for '$query': ${localResults.size} local, ${liveResults.size} live. Combined: ${combinedResults.size}")
+            
+            _searchResults.value = combinedResults
             _isSearching.value = false
         }
     }
