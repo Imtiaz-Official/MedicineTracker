@@ -227,11 +227,12 @@ class MedicineViewModel(
         }
 
         searchJob = viewModelScope.launch {
+            _isSearching.value = true
             kotlinx.coroutines.delay(300)
-            val localResults = withContext(Dispatchers.IO) {
-                val results = repository.searchBrands(query)
-                android.util.Log.d("MedicineViewModel", "Autocomplete search for '$query' returned ${results.size} results")
-                results.map { 
+            
+            // Search local and live in parallel for suggestions
+            val localResultsDeferred = async(Dispatchers.IO) {
+                repository.searchBrands(query).map { 
                     MedicineSuggestion(
                         name = it.name,
                         dosageForm = it.dosageForm,
@@ -241,7 +242,27 @@ class MedicineViewModel(
                     )
                 }
             }
-            _suggestions.value = localResults
+            
+            val liveResultsDeferred = async(Dispatchers.IO) {
+                MedexCrawler.searchBrandsFromMedex(query).map {
+                    MedicineSuggestion(
+                        name = it.name,
+                        dosageForm = it.dosageForm,
+                        generic = it.generic,
+                        strength = it.strength,
+                        isLocal = false
+                    )
+                }
+            }
+
+            val localResults = localResultsDeferred.await()
+            val liveResults = liveResultsDeferred.await()
+            
+            // Merge suggestions, avoiding duplicates
+            val combined = (localResults + liveResults).distinctBy { "${it.name}-${it.generic}-${it.strength}" }
+            
+            _suggestions.value = combined
+            _isSearching.value = false
         }
     }
 

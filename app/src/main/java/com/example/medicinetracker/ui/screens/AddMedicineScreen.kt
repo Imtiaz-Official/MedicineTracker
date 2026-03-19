@@ -44,6 +44,7 @@ fun AddMedicineScreen(
     }
 
     val suggestions by viewModel.suggestions.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
     val dosageForms by viewModel.dosageForms.collectAsState()
 
     var showTypeDropdown by remember { mutableStateOf(false) }
@@ -148,45 +149,73 @@ fun AddMedicineScreen(
                         viewModel.searchMedicine(it)
                     },
                     label = { Text("Medicine Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        }
+                    }
                 )
                 
                 if (suggestions.isNotEmpty()) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp)
+                            .heightIn(max = 250.dp)
                             .padding(vertical = 4.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
                         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                             suggestions.forEach { suggestion ->
-                                TextButton(
+                                Surface(
                                     onClick = { 
                                         name = suggestion.name
-                                        if (suggestion.isLocal) {
-                                            dosage = suggestion.strength ?: ""
-                                            selectedType = suggestion.dosageForm ?: "Tablet"
-                                        }
+                                        dosage = suggestion.strength ?: ""
+                                        selectedType = suggestion.dosageForm ?: "Tablet"
                                         viewModel.searchMedicine("") 
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = suggestion.name, 
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        if (suggestion.isLocal) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                        ) {
                                             Text(
-                                                text = "${suggestion.generic} - ${suggestion.strength}",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                text = suggestion.name, 
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.weight(1f)
                                             )
+                                            if (!suggestion.isLocal) {
+                                                Surface(
+                                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                                    shape = MaterialTheme.shapes.extraSmall
+                                                ) {
+                                                    Text(
+                                                        text = "LIVE",
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                    )
+                                                }
+                                            }
                                         }
+                                        Text(
+                                            text = "${suggestion.generic} - ${suggestion.strength} (${suggestion.dosageForm})",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
                             }
                         }
                     }
