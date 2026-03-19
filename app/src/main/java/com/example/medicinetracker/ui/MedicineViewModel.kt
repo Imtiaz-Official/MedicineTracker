@@ -36,6 +36,9 @@ class MedicineViewModel(
     private val _searchResults = MutableStateFlow<List<MedicineBrand>>(emptyList())
     val searchResults = _searchResults.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
     private val _isSearching = MutableStateFlow(false)
     val isSearching = _isSearching.asStateFlow()
 
@@ -70,7 +73,13 @@ private fun populateBrands() {
     viewModelScope.launch {
         try {
             val count = withContext(Dispatchers.IO) { repository.getBrandCount() }
-            if (count > 20000) return@launch
+            android.util.Log.d("MedicineViewModel", "Current brand count in DB: $count")
+            if (count > 20000) {
+                android.util.Log.d("MedicineViewModel", "Database already populated.")
+                return@launch
+            }
+
+            android.util.Log.d("MedicineViewModel", "Starting brand population from assets...")
 
             // 1. Populate Generics first
             val genericsJson = getApplication<Application>().assets.open("medicine_generics.json").bufferedReader().use { it.readText() }
@@ -81,20 +90,23 @@ private fun populateBrands() {
                 genericsList.add(com.example.medicinetracker.data.model.GenericInfo(
                     id = obj.getLong("id"),
                     name = obj.getString("name"),
-                    indication = obj.optString("indication").takeIf { it != "null" },
-                    therapeuticClass = obj.optString("therapeuticClass").takeIf { it != "null" },
-                    pharmacology = obj.optString("pharmacology").takeIf { it != "null" },
-                    dosage = obj.optString("dosage").takeIf { it != "null" },
-                    administration = obj.optString("administration").takeIf { it != "null" },
-                    interaction = obj.optString("interaction").takeIf { it != "null" },
-                    contraindications = obj.optString("contraindications").takeIf { it != "null" },
-                    sideEffects = obj.optString("sideEffects").takeIf { it != "null" },
-                    pregnancyLactation = obj.optString("pregnancyLactation").takeIf { it != "null" },
-                    precautions = obj.optString("precautions").takeIf { it != "null" },
-                    storage = obj.optString("storage").takeIf { it != "null" }
+                    indication = obj.optString("indication").takeIf { it != "null" && it.isNotBlank() },
+                    therapeuticClass = obj.optString("therapeuticClass").takeIf { it != "null" && it.isNotBlank() },
+                    pharmacology = obj.optString("pharmacology").takeIf { it != "null" && it.isNotBlank() },
+                    dosage = obj.optString("dosage").takeIf { it != "null" && it.isNotBlank() },
+                    administration = obj.optString("administration").takeIf { it != "null" && it.isNotBlank() },
+                    interaction = obj.optString("interaction").takeIf { it != "null" && it.isNotBlank() },
+                    contraindications = obj.optString("contraindications").takeIf { it != "null" && it.isNotBlank() },
+                    sideEffects = obj.optString("sideEffects").takeIf { it != "null" && it.isNotBlank() },
+                    pregnancyLactation = obj.optString("pregnancyLactation").takeIf { it != "null" && it.isNotBlank() },
+                    precautions = obj.optString("precautions").takeIf { it != "null" && it.isNotBlank() },
+                    storage = obj.optString("storage").takeIf { it != "null" && it.isNotBlank() }
                 ))
             }
-            withContext(Dispatchers.IO) { repository.insertGenerics(genericsList) }
+            withContext(Dispatchers.IO) { 
+                repository.insertGenerics(genericsList) 
+                android.util.Log.d("MedicineViewModel", "Populated ${genericsList.size} generics")
+            }
 
             // 2. Populate Brands
             val brandsJson = getApplication<Application>().assets.open("medicine_brands.json").bufferedReader().use { it.readText() }
@@ -109,6 +121,10 @@ private fun populateBrands() {
                     val end = if (i + chunkSize > total) total else i + chunkSize
                     for (j in i until end) {
                         val obj = brandsArray.getJSONObject(j)
+                        
+                        // FIX: Safely handle null genericId
+                        val genericId = if (!obj.isNull("genericId")) obj.getLong("genericId") else null
+                        
                         list.add(MedicineBrand(
                             id = obj.getLong("id"),
                             name = obj.getString("name"),
@@ -116,14 +132,19 @@ private fun populateBrands() {
                             generic = obj.getString("generic"),
                             strength = obj.getString("strength"),
                             manufacturer = obj.getString("manufacturer"),
-                            genericId = if (obj.has("genericId")) obj.getLong("genericId") else null
+                            genericId = genericId
                         ))
                     }
                     repository.insertBrands(list)
+                    if (end % 5000 == 0 || end == total) {
+                        android.util.Log.d("MedicineViewModel", "Populated batch: $end / $total brands")
+                    }
                 }
+                val finalCount = repository.getBrandCount()
+                android.util.Log.d("MedicineViewModel", "Population complete. Total brands in DB: $finalCount")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("MedicineViewModel", "Error populating brands", e)
         }
     }
 }
@@ -155,7 +176,9 @@ private fun populateBrands() {
         searchJob = viewModelScope.launch {
             kotlinx.coroutines.delay(300)
             val localResults = withContext(Dispatchers.IO) {
-                repository.searchBrands(query).map { 
+                val results = repository.searchBrands(query)
+                android.util.Log.d("MedicineViewModel", "Autocomplete search for '$query' returned ${results.size} results")
+                results.map { 
                     MedicineSuggestion(
                         name = it.name,
                         dosageForm = it.dosageForm,
@@ -170,6 +193,7 @@ private fun populateBrands() {
     }
 
     fun performDedicatedSearch(query: String) {
+        _searchQuery.value = query
         dedicatedSearchJob?.cancel()
         if (query.length < 2) {
             _searchResults.value = emptyList()
@@ -181,7 +205,9 @@ private fun populateBrands() {
             _isSearching.value = true
             kotlinx.coroutines.delay(300)
             val results = withContext(Dispatchers.IO) {
-                repository.searchBrands(query)
+                val res = repository.searchBrands(query)
+                android.util.Log.d("MedicineViewModel", "Dedicated search for '$query' returned ${res.size} results")
+                res
             }
             _searchResults.value = results
             _isSearching.value = false
@@ -199,8 +225,10 @@ private fun populateBrands() {
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
+            initialValue = emptyValueList()
         )
+
+    private fun <T> emptyValueList(): List<T> = emptyList()
 
     fun insertAndSchedule(medicine: Medicine) = viewModelScope.launch {
         repository.insert(medicine)

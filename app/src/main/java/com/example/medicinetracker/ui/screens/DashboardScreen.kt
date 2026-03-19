@@ -249,7 +249,7 @@ fun DashboardScreen(
 
 @Composable
 fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.example.medicinetracker.data.model.MedicineBrand) -> Unit) {
-    var searchQuery by remember { mutableStateOf("") }
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
 
@@ -257,7 +257,6 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
         OutlinedTextField(
             value = searchQuery,
             onValueChange = {
-                searchQuery = it
                 viewModel.performDedicatedSearch(it)
             },
             label = { Text("Search by Brand or Generic Name") },
@@ -266,7 +265,6 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { 
-                        searchQuery = ""
                         viewModel.performDedicatedSearch("")
                     }) {
                         Icon(Icons.Default.Close, contentDescription = "Clear")
