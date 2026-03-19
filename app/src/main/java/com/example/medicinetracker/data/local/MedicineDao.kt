@@ -39,4 +39,7 @@ interface MedicineDao {
 
     @Query("SELECT * FROM generic_info WHERE name = :name LIMIT 1")
     suspend fun getGenericInfoByName(name: String): com.example.medicinetracker.data.model.GenericInfo?
+
+    @Query("SELECT * FROM medicine_brands WHERE generic = :genericName AND name != :currentBrandName LIMIT 20")
+    suspend fun getAlternateBrands(genericName: String, currentBrandName: String): List<MedicineBrand>
 }

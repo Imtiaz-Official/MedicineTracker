@@ -51,6 +51,9 @@ class MedicineViewModel(
     private val _isLoadingGenericInfo = MutableStateFlow(false)
     val isLoadingGenericInfo = _isLoadingGenericInfo.asStateFlow()
 
+    private val _alternateBrands = MutableStateFlow<List<MedicineBrand>>(emptyList())
+    val alternateBrands = _alternateBrands.asStateFlow()
+
     private val _isLiveLoading = MutableStateFlow(false)
     val isLiveLoading = _isLiveLoading.asStateFlow()
 
@@ -197,6 +200,12 @@ class MedicineViewModel(
             _selectedGenericInfo.value = info
             _isLoadingGenericInfo.value = false
             _isLiveLoading.value = false
+
+            // Fetch alternate brands locally
+            val alternates = withContext(Dispatchers.IO) {
+                repository.getAlternateBrands(brand.generic, brand.name)
+            }
+            _alternateBrands.value = alternates
         }
     }
 
@@ -217,6 +226,7 @@ class MedicineViewModel(
     fun clearSelectedGenericInfo() {
         _selectedGenericInfo.value = null
         _isLoadingGenericInfo.value = false
+        _alternateBrands.value = emptyList()
     }
 
     fun searchMedicine(query: String) {

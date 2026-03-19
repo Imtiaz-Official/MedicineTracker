@@ -56,4 +56,8 @@ class MedicineRepository(
     suspend fun getGenericInfoByName(name: String): com.example.medicinetracker.data.model.GenericInfo? {
         return medicineDao.getGenericInfoByName(name)
     }
+
+    suspend fun getAlternateBrands(genericName: String, currentBrandName: String): List<MedicineBrand> {
+        return medicineDao.getAlternateBrands(genericName, currentBrandName)
+    }
 }

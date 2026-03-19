@@ -33,6 +33,7 @@ fun MedicineBrandDetailScreen(
 ) {
     val genericInfo by viewModel.selectedGenericInfo.collectAsState()
     val isLoading by viewModel.isLoadingGenericInfo.collectAsState()
+    val alternateBrands by viewModel.alternateBrands.collectAsState()
 
     LaunchedEffect(brand.id) {
         viewModel.getGenericInfo(brand)
@@ -41,7 +42,7 @@ fun MedicineBrandDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(brand.name, fontWeight = FontWeight.Bold) },
+                title = { Text("Medicine Details") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -53,15 +54,56 @@ fun MedicineBrandDetailScreen(
         MedicineBrandDetailView(
             brand = brand,
             genericInfo = genericInfo,
+            alternateBrands = alternateBrands,
             isLoading = isLoading,
             viewModel = viewModel,
+            onBrandClick = { newBrand ->
+                viewModel.getGenericInfo(newBrand)
+            },
             modifier = Modifier.padding(innerPadding)
         )
     }
-}
+    }
 
-@Composable
-fun ShimmerItem(
+    @Composable
+    fun AlternateBrandCard(
+    brand: MedicineBrand,
+    onClick: () -> Unit
+    ) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .padding(end = 8.dp),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = brand.name,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                text = brand.strength,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1
+            )
+            Text(
+                text = brand.manufacturer,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+        }
+    }
+    }
+
+    @Composable
+    fun ShimmerItem(
+
     brush: Brush,
     modifier: Modifier = Modifier
 ) {
@@ -113,15 +155,17 @@ fun MonographSkeleton() {
 fun MedicineBrandDetailView(
     brand: MedicineBrand,
     genericInfo: GenericInfo?,
+    alternateBrands: List<MedicineBrand>,
     isLoading: Boolean,
     viewModel: MedicineViewModel,
+    onBrandClick: (MedicineBrand) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isLiveLoading by viewModel.isLiveLoading.collectAsState()
     
     LazyColumn(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 24.dp)
             .padding(bottom = 32.dp)
     ) {
@@ -185,6 +229,30 @@ fun MedicineBrandDetailView(
             if (!brand.packageSize.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 DetailItem(label = "Pack Size", value = brand.packageSize)
+            }
+
+            // Local Alternates Section
+            if (alternateBrands.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Local Alternates",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(alternateBrands.size) { index ->
+                        val altBrand = alternateBrands[index]
+                        AlternateBrandCard(
+                            brand = altBrand,
+                            onClick = { onBrandClick(altBrand) }
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
