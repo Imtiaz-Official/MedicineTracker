@@ -218,14 +218,30 @@ fun MedicineBrandDetailView(
                     DetailItem(label = "Dosage Form", value = brand.dosageForm)
                     Spacer(modifier = Modifier.height(12.dp))
                     DetailItem(label = "Manufacturer", value = brand.manufacturer)
-                    
-                    if (!brand.packageContainer.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+            
+            if (!brand.packageContainer.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         DetailItem(label = "Package Info & Price", value = brand.packageContainer)
                     }
-                    
-                    if (!brand.packageSize.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+            
+            if (!brand.packageSize.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         DetailItem(label = "Pack Size", value = brand.packageSize)
                     }
                 }
