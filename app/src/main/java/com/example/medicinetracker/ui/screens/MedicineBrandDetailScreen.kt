@@ -218,17 +218,17 @@ fun MedicineBrandDetailView(
                     DetailItem(label = "Dosage Form", value = brand.dosageForm)
                     Spacer(modifier = Modifier.height(12.dp))
                     DetailItem(label = "Manufacturer", value = brand.manufacturer)
+                    
+                    if (!brand.packageContainer.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DetailItem(label = "Package Info & Price", value = brand.packageContainer)
+                    }
+                    
+                    if (!brand.packageSize.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DetailItem(label = "Pack Size", value = brand.packageSize)
+                    }
                 }
-            }
-            
-            if (!brand.packageContainer.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                DetailItem(label = "Package Info & Price", value = brand.packageContainer)
-            }
-            
-            if (!brand.packageSize.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                DetailItem(label = "Pack Size", value = brand.packageSize)
             }
 
             // Unified Alternates Section
