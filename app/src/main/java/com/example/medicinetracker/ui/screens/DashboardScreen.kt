@@ -889,6 +889,16 @@ fun MedicineCard(
     onDeleteClick: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    
+    // Category-based colors for a beautiful dashboard
+    val (containerColor, contentColor, icon) = when (medicine.type.lowercase()) {
+        "tablet" -> Triple(Color(0xFFE3F2FD), Color(0xFF1976D2), Icons.Default.TableChart)
+        "capsule" -> Triple(Color(0xFFF3E5F5), Color(0xFF7B1FA2), Icons.Default.Grain)
+        "syrup" -> Triple(Color(0xFFE8F5E9), Color(0xFF388E3C), Icons.Default.WaterDrop)
+        "injection" -> Triple(Color(0xFFFFF3E0), Color(0xFFF57C00), Icons.Default.Medication)
+        else -> Triple(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.colorScheme.primary, Icons.Default.MedicalServices)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -899,44 +909,81 @@ fun MedicineCard(
                     onLongClick()
                 }
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, containerColor)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Iconic leading element
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                color = containerColor,
+                modifier = Modifier.size(56.dp)
             ) {
-                Text(
-                    text = medicine.name, 
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onDeleteClick) {
+                Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Medicine",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
-            Text(text = "${medicine.dosage} - ${medicine.type}", style = MaterialTheme.typography.bodyMedium)
             
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Frequency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(medicine.frequency.displayName, style = MaterialTheme.typography.bodySmall)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = medicine.name, 
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onDeleteClick, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Duration", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${medicine.durationValue} ${medicine.durationUnit.displayName}", style = MaterialTheme.typography.bodySmall)
+                
+                Text(
+                    text = "${medicine.dosage} • ${medicine.type}", 
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = containerColor.copy(alpha = 0.5f),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    ) {
+                        Text(
+                            text = medicine.frequency.displayName,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "${medicine.durationValue} ${medicine.durationUnit.displayName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
                 }
             }
         }
