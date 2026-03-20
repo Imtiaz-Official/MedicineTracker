@@ -510,50 +510,52 @@ private fun findNextDose(
     doseHistory: List<com.example.medicinetracker.data.model.DoseRecord>
 ): NextDoseInfo? {
     val now = LocalDateTime.now()
+    val today = LocalDate.now()
     val upcomingDoses = mutableListOf<LocalDateTimeInfo>()
 
     for (medicine in medicines) {
-        // Find next 7 days of occurrences for this medicine
-        for (dayOffset in 0..7) {
-            val checkDate = LocalDate.now().plusDays(dayOffset.toLong())
+        // Look ahead 14 days to catch next weekly dose reliably
+        for (dayOffset in 0..14) {
+            val checkDate = today.plusDays(dayOffset.toLong())
             
             // Skip if medicine hasn't started yet
             if (checkDate.isBefore(medicine.startDate)) continue
             
-            // Check if it's a valid day for this medicine
+            // Refined day validation
             val isValidDay = when (medicine.frequency) {
                 com.example.medicinetracker.data.model.FrequencyType.DAILY -> true
-                com.example.medicinetracker.data.model.FrequencyType.WEEKLY,
+                com.example.medicinetracker.data.model.FrequencyType.WEEKLY -> {
+                    // If user picked specific days, use them. Otherwise fallback to start date's day.
+                    if (!medicine.daysOfWeek.isNullOrEmpty()) {
+                        medicine.daysOfWeek.contains(checkDate.dayOfWeek)
+                    } else {
+                        checkDate.dayOfWeek == medicine.startDate.dayOfWeek
+                    }
+                }
                 com.example.medicinetracker.data.model.FrequencyType.SPECIFIC_DAYS -> {
-                    // Use daysOfWeek if available, otherwise fallback to startDate's day
-                    medicine.daysOfWeek?.contains(checkDate.dayOfWeek) ?: (checkDate.dayOfWeek == medicine.startDate.dayOfWeek)
+                    medicine.daysOfWeek?.contains(checkDate.dayOfWeek) == true
                 }
                 com.example.medicinetracker.data.model.FrequencyType.AS_NEEDED -> false
             }
 
             if (isValidDay) {
-                for (time in medicine.timesPerDay) {
-                    val doseDateTime = LocalDateTime.of(checkDate, time)
+                for (slotTime in medicine.timesPerDay) {
+                    val doseDateTime = LocalDateTime.of(checkDate, slotTime)
                     
-                    // CRITICAL: Filter out doses that are already taken today
-                    val isTaken = doseHistory.any { 
-                        if (it.medicineId != medicine.id) return@any false
+                    // If this slot is more than 30 mins in the past, it's no longer 'upcoming'
+                    if (doseDateTime.isBefore(now.minusMinutes(30))) continue
+
+                    // Check if this specific slot was already taken
+                    val isTaken = doseHistory.any { record ->
+                        if (record.medicineId != medicine.id) return@any false
+                        val loggedTime = try { LocalDateTime.parse(record.dateTimeString) } catch(e: Exception) { null }
                         
-                        val loggedDateTime = try { 
-                            LocalDateTime.parse(it.dateTimeString) 
-                        } catch (e: Exception) { 
-                            null 
-                        } ?: return@any false
-                        
-                        // Check if logged on the same day
-                        if (loggedDateTime.toLocalDate() != checkDate) return@any false
-                        
-                        // Check if logged within 2 hours of THIS slot's time
-                        val diffMinutes = java.time.Duration.between(loggedDateTime.toLocalTime(), time).abs().toMinutes()
-                        diffMinutes < 120 // 2 hour window
+                        loggedTime != null && 
+                        loggedTime.toLocalDate() == checkDate && 
+                        java.time.Duration.between(loggedTime.toLocalTime(), slotTime).abs().toMinutes() < 120
                     }
 
-                    if (doseDateTime.isAfter(now) && !isTaken) {
+                    if (!isTaken) {
                         upcomingDoses.add(LocalDateTimeInfo(medicine, doseDateTime))
                     }
                 }
@@ -564,8 +566,8 @@ private fun findNextDose(
     val next = upcomingDoses.minByOrNull { it.dateTime } ?: return null
     
     val label = when {
-        next.dateTime.toLocalDate() == LocalDate.now() -> "Today"
-        next.dateTime.toLocalDate() == LocalDate.now().plusDays(1) -> "Tomorrow"
+        next.dateTime.toLocalDate() == today -> "Today"
+        next.dateTime.toLocalDate() == today.plusDays(1) -> "Tomorrow"
         else -> next.dateTime.toLocalDate().dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.getDefault())
     }
 
