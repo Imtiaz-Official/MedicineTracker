@@ -982,15 +982,23 @@ fun MedicineCard(
                 Spacer(Modifier.height(8.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val (freqContainer, freqContent) = when (medicine.frequency) {
+                        com.example.medicinetracker.data.model.FrequencyType.DAILY -> Color(0xFFE3F2FD) to Color(0xFF1976D2)
+                        com.example.medicinetracker.data.model.FrequencyType.WEEKLY -> Color(0xFFFFF3E0) to Color(0xFFF57C00)
+                        com.example.medicinetracker.data.model.FrequencyType.AS_NEEDED -> Color(0xFFF3E5F5) to Color(0xFF7B1FA2)
+                        com.example.medicinetracker.data.model.FrequencyType.SPECIFIC_DAYS -> Color(0xFFE8F5E9) to Color(0xFF388E3C)
+                    }
+                    
                     Surface(
-                        color = containerColor.copy(alpha = 0.5f),
+                        color = freqContainer,
                         shape = androidx.compose.foundation.shape.CircleShape
                     ) {
                         Text(
                             text = medicine.frequency.displayName,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = contentColor
+                            color = freqContent,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(Modifier.width(8.dp))
