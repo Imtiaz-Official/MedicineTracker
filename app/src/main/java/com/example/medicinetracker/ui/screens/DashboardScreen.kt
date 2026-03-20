@@ -542,20 +542,23 @@ private fun findNextDose(
                 for (slotTime in medicine.timesPerDay) {
                     val doseDateTime = LocalDateTime.of(checkDate, slotTime)
                     
-                    // If this slot is more than 30 mins in the past, it's no longer 'upcoming'
-                    if (doseDateTime.isBefore(now.minusMinutes(30))) continue
-
-                    // Check if this specific slot was already taken
+                    // Check if this specific slot was already taken today
                     val isTaken = doseHistory.any { record ->
                         if (record.medicineId != medicine.id) return@any false
                         val loggedTime = try { LocalDateTime.parse(record.dateTimeString) } catch(e: Exception) { null }
                         
                         loggedTime != null && 
                         loggedTime.toLocalDate() == checkDate && 
-                        java.time.Duration.between(loggedTime.toLocalTime(), slotTime).abs().toMinutes() < 120
+                        // If taken within 4 hours of the slot, consider it done for this slot
+                        java.time.Duration.between(loggedTime.toLocalTime(), slotTime).abs().toMinutes() < 240
                     }
 
-                    if (!isTaken) {
+                    if (isTaken) continue
+
+                    // If NOT taken, check if it's still in the future or very recent past (grace period)
+                    // If we just clicked "Take Now", the record above will catch it.
+                    // If we HAVEN'T taken it, we only show it if it's not too far in the past.
+                    if (doseDateTime.isAfter(now.minusMinutes(5))) {
                         upcomingDoses.add(LocalDateTimeInfo(medicine, doseDateTime))
                     }
                 }
