@@ -259,9 +259,13 @@ fun MedicineBrandDetailView(
                 Spacer(modifier = Modifier.height(8.dp))
                 androidx.compose.foundation.lazy.LazyRow(
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 4.dp)
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(alternateBrands.size) { index ->
+                    items(
+                        count = alternateBrands.size,
+                        key = { index -> "${alternateBrands[index].id}-${alternateBrands[index].name}" }
+                    ) { index ->
                         val altBrand = alternateBrands[index]
                         AlternateBrandCard(
                             brand = altBrand,
@@ -358,6 +362,7 @@ fun MonographSection(title: String, content: String?) {
     
     val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
     val primaryColor = MaterialTheme.colorScheme.primary
+    val formattedHtml = remember(content) { formatHtmlContent(content ?: "") }
     
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
         Text(
@@ -381,7 +386,6 @@ fun MonographSection(title: String, content: String?) {
             },
             update = { textView ->
                 textView.setTextColor(textColor)
-                val formattedHtml = formatHtmlContent(content)
                 textView.text = android.text.Html.fromHtml(formattedHtml, android.text.Html.FROM_HTML_MODE_COMPACT)
             },
             modifier = Modifier.fillMaxWidth()

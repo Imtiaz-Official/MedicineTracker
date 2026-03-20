@@ -351,7 +351,10 @@ fun SearchMedicineScreen(viewModel: MedicineViewModel, onBrandClick: (com.exampl
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp)
             ) {
-                items(searchResults) { brand ->
+                items(
+                    items = searchResults,
+                    key = { "${it.id}-${it.name}" }
+                ) { brand ->
                     SearchMedicineCard(
                         brand = brand, 
                         onClick = { 
@@ -481,7 +484,10 @@ fun MedicineList(
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
             }
-            items(medicines) { medicine ->
+            items(
+                items = medicines,
+                key = { it.id }
+            ) { medicine ->
                 MedicineCard(
                     medicine = medicine, 
                     onClick = { onMedicineClick(medicine) },
@@ -697,7 +703,10 @@ fun HistoryList(
                     )
                 }
 
-                items(records) { record ->
+                items(
+                    items = records,
+                    key = { "${it.medicineId}-${it.dateTimeString}" }
+                ) { record ->
                     val dateTime = LocalDateTime.parse(record.dateTimeString)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
