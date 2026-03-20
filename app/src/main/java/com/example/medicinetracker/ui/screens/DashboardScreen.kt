@@ -523,11 +523,10 @@ private fun findNextDose(
             // Check if it's a valid day for this medicine
             val isValidDay = when (medicine.frequency) {
                 com.example.medicinetracker.data.model.FrequencyType.DAILY -> true
-                com.example.medicinetracker.data.model.FrequencyType.WEEKLY -> {
-                    checkDate.dayOfWeek == medicine.startDate.dayOfWeek
-                }
+                com.example.medicinetracker.data.model.FrequencyType.WEEKLY,
                 com.example.medicinetracker.data.model.FrequencyType.SPECIFIC_DAYS -> {
-                    medicine.daysOfWeek?.contains(checkDate.dayOfWeek) == true
+                    // Use daysOfWeek if available, otherwise fallback to startDate's day
+                    medicine.daysOfWeek?.contains(checkDate.dayOfWeek) ?: (checkDate.dayOfWeek == medicine.startDate.dayOfWeek)
                 }
                 com.example.medicinetracker.data.model.FrequencyType.AS_NEEDED -> false
             }
