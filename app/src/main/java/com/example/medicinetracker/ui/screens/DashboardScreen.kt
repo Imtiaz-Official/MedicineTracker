@@ -537,10 +537,20 @@ private fun findNextDose(
                     
                     // CRITICAL: Filter out doses that are already taken today
                     val isTaken = doseHistory.any { 
-                        it.medicineId == medicine.id && 
-                        LocalDateTime.parse(it.dateTimeString).toLocalDate() == checkDate &&
-                        // Simple check: if a dose was logged within 2 hours of this slot, count it as taken
-                        java.time.Duration.between(LocalDateTime.parse(it.dateTimeString).toLocalTime(), time).abs().toMinutes() < 120
+                        if (it.medicineId != medicine.id) return@any false
+                        
+                        val loggedDateTime = try { 
+                            LocalDateTime.parse(it.dateTimeString) 
+                        } catch (e: Exception) { 
+                            null 
+                        } ?: return@any false
+                        
+                        // Check if logged on the same day
+                        if (loggedDateTime.toLocalDate() != checkDate) return@any false
+                        
+                        // Check if logged within 2 hours of THIS slot's time
+                        val diffMinutes = java.time.Duration.between(loggedDateTime.toLocalTime(), time).abs().toMinutes()
+                        diffMinutes < 120 // 2 hour window
                     }
 
                     if (doseDateTime.isAfter(now) && !isTaken) {
