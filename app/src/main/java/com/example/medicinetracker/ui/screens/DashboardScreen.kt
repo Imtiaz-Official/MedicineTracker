@@ -927,12 +927,20 @@ fun MedicineCard(
                 modifier = Modifier.size(56.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    if (medicine.type.lowercase() == "capsule") {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_capsule),
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = contentColor,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
             
