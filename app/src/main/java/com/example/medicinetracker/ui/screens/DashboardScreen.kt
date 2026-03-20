@@ -895,7 +895,7 @@ fun MedicineCard(
     
     // Category-based colors for a beautiful dashboard
     val (containerColor, contentColor, icon) = when (medicine.type.lowercase()) {
-        "tablet" -> Triple(Color(0xFFE3F2FD), Color(0xFF1976D2), Icons.Default.MedicalServices)
+        "tablet" -> Triple(Color(0xFFF5F5F5), Color(0xFF616161), Icons.Default.MedicalServices)
         "capsule" -> Triple(Color(0xFFF5F5F5), Color(0xFF616161), Icons.Default.Science)
         "syrup" -> Triple(Color(0xFFE8F5E9), Color(0xFF388E3C), Icons.Default.Opacity)
         "injection" -> Triple(Color(0xFFFFF3E0), Color(0xFFF57C00), Icons.Default.Vaccines)
@@ -927,14 +927,18 @@ fun MedicineCard(
                 modifier = Modifier.size(56.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    if (medicine.type.lowercase() == "capsule") {
-                        Image(
+                    when (medicine.type.lowercase()) {
+                        "capsule" -> Image(
                             painter = painterResource(id = R.drawable.ic_capsule),
                             contentDescription = null,
                             modifier = Modifier.size(32.dp)
                         )
-                    } else {
-                        Icon(
+                        "tablet" -> Image(
+                            painter = painterResource(id = R.drawable.ic_tablet),
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        else -> Icon(
                             imageVector = icon,
                             contentDescription = null,
                             tint = contentColor,
